@@ -68,4 +68,9 @@ Son hipótesis a validar, no precios publicados.
 2. Seleccionar un establecimiento piloto por acceso y colaboración.
 3. Relevar conectividad, máquinas, balanza, RFID y datos disponibles.
 4. Diseñar la lista de materiales sin comprar hardware antes del relevamiento.
-5. Probar manualmente el flujo de decisiones antes de entrenar modelos.
+5. Completar el onboarding del establecimiento real y sincronizar la primera evidencia climática y Sentinel-2.
+6. Probar manualmente el flujo de decisiones antes de entrenar modelos.
+
+## Estado del producto
+
+El núcleo técnico del piloto ya cuenta con identidad real, aislamiento multiempresa, onboarding sin datos simulados, catálogo satelital, clima persistido, decisiones explicables e ingestión segura de telemetría. Todavía no equivale a validación agronómica o comercial: necesita coordenadas, lotes, dispositivos calibrados y resultados del establecimiento piloto.

@@ -5,7 +5,8 @@
 - Proyecto: `NODO-AGRO`
 - Referencia: `kbhvgbczerfgdmfpugxr`
 - Región: São Paulo (`sa-east-1`)
-- Migraciones remotas: `20260829153000`, `20260829154000`
+- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`
+- Edge Functions: `sync-intelligence` (JWT de usuario) e `ingest-telemetry` (token de dispositivo)
 
 Comandos reproducibles:
 
@@ -26,3 +27,14 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - OAuth Google validado en el dominio definitivo.
 - SMTP productivo y entregabilidad validados.
 - Monitoreo de errores, uptime e ingestión IoT activo.
+
+## Evidencia verificada
+
+- `supabase db lint --linked --level warning`: sin errores de esquema.
+- RLS anónima sobre datos operativos: HTTP 401.
+- `sync-intelligence` sin JWT: HTTP 401.
+- `ingest-telemetry` sin token y con token inválido: HTTP 401.
+- Open-Meteo y Sentinel-2 STAC: respuestas reales verificadas desde el entorno de operación.
+- Onboarding: validado con sesión real; no se creó un establecimiento ficticio.
+
+La organización Supabase comparte cuota con otros proyectos. NODO-AGRO registraba 0 GB de egress y cached egress al momento de la revisión; la advertencia de cuota era organizacional y no originada por NODO.
