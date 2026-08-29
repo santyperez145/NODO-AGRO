@@ -12,5 +12,6 @@
 .satelliteMapCaption b{font-size:10px}
 .satelliteMapCaption span{font-size:9px;color:#d8e4d2}
 .satelliteMapCaption small{font-size:7px;color:#a9b8a4;margin-top:3px}
+.parcelMapLabel{border:1px solid #d8ef9a!important;background:#172318e8!important;color:#fff!important;border-radius:7px!important;box-shadow:0 5px 15px #0005!important;padding:5px 7px!important;display:grid!important;text-align:center!important}.parcelMapLabel:before{display:none!important}.parcelMapLabel b{font-size:9px}.parcelMapLabel span{display:block;font-size:7px;color:#d5e4cf;margin-top:1px}.parcel-boundary{filter:drop-shadow(0 2px 2px #10200d99)}
 .mapEvidence{padding:9px 14px;display:flex;justify-content:space-between;gap:12px;background:#f7f9f5;border-top:1px solid #e1e6de;font-size:8px;color:#6c7869}
 .mapEvidence a{color:#466d33;font-weight:700}

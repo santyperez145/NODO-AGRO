@@ -38,6 +38,9 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - Esri World Imagery: teselas satelitales y capa de etiquetas verificadas en el establecimiento real, con atribución visible.
 - Editor parcelario: carga diferida, trazado de vértices y cálculo de superficie verificados sin guardar datos de prueba.
 - CSS de Leaflet se carga desde el componente satelital compartido. Se verificaron visualmente Centro de mando, Mapa vivo y Cultivos para evitar teselas sin recorte o desbordadas.
+- Los límites parcelarios GeoJSON se validan antes de renderizar, se ajusta el encuadre a todos los lotes y se muestran desde la misma fuente persistida tanto en Centro de mando como en Mapa vivo.
+- El editor admite polígonos de hasta 500 vértices, exige cierre explícito, permite deshacer y rechaza cruces del perímetro. La superficie se calcula de forma geodésica usando todos los vértices.
+- Los lotes existentes pueden reabrirse y redibujarse desde el inventario sin crear duplicados; la actualización se acota por lote, organización y establecimiento y exige una fila afectada.
 - Onboarding: validado con sesión real; no se creó un establecimiento ficticio.
 
 La organización Supabase comparte cuota con otros proyectos. NODO-AGRO registraba 0 GB de egress y cached egress al momento de la revisión; la advertencia de cuota era organizacional y no originada por NODO.

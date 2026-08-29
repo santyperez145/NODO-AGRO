@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import type { GeoJsonPolygon } from './geojson';
 
 export type Establishment = { id: string; organization_id: string; name: string; latitude: number; longitude: number; area_hectares: number | null };
-export type Parcel = { id: string; name: string; use: string; crop: string | null; area_hectares: number; health_score: number | null; boundary_geojson: {type:'Polygon';coordinates:number[][][]}|null };
+export type Parcel = { id: string; name: string; use: string; crop: string | null; area_hectares: number; health_score: number | null; boundary_geojson: unknown };
 export type Device = { id: string; external_id: string; kind: string; status: string; last_seen_at: string | null };
 export type WeatherObservation = { observed_at: string; temperature_c: number; humidity_pct: number; precipitation_mm: number; wind_kmh: number; forecast_rain_7d_mm: number; source: string };
 export type SatelliteScene = { captured_at: string; cloud_cover_pct: number | null; provider: string; collection: string; catalog_url: string | null };
@@ -98,13 +99,28 @@ export function useRecommendationAction() {
 export function useCreateParcel() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { organizationId:string; establishmentId:string; name:string; use:string; crop:string|null; areaHectares:number; boundary:{type:'Polygon';coordinates:number[][][]} }) => {
+    mutationFn: async (input: { organizationId:string; establishmentId:string; name:string; use:string; crop:string|null; areaHectares:number; boundary:GeoJsonPolygon }) => {
       const client = await requireClient();
       const { error } = await client.from('land_parcels').insert({
         organization_id:input.organizationId, establishment_id:input.establishmentId,
         name:input.name.trim(), use:input.use, crop:input.crop?.trim()||null,
         area_hectares:input.areaHectares, boundary_geojson:input.boundary,
-      });
+      }).select('id').single();
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey:['workspace'] }),
+  });
+}
+
+export function useUpdateParcel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id:string; organizationId:string; establishmentId:string; name:string; use:string; crop:string|null; areaHectares:number; boundary:GeoJsonPolygon }) => {
+      const client = await requireClient();
+      const { error } = await client.from('land_parcels').update({
+        name:input.name.trim(), use:input.use, crop:input.crop?.trim()||null,
+        area_hectares:input.areaHectares, boundary_geojson:input.boundary,
+      }).eq('id',input.id).eq('organization_id',input.organizationId).eq('establishment_id',input.establishmentId).select('id').single();
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey:['workspace'] }),

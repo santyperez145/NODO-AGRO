@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
-import { useEffect } from 'react';
-import type { LatLngExpression } from 'leaflet';
+import { useEffect, useMemo, useState } from 'react';
+import { MapContainer, Marker, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet';
+import { latLngBounds, type LatLngExpression } from 'leaflet';
+import { parseGeoJsonPolygon, type ParsedPolygon } from './lib/geojson';
+import type { Parcel } from './lib/workspace';
 import 'leaflet/dist/leaflet.css';
 
 export type MapCoordinates = { latitude:number; longitude:number };
@@ -14,7 +15,26 @@ export function SatelliteTiles(){
 
 export function MapResize(){const map=useMap();useEffect(()=>{const timer=setTimeout(()=>map.invalidateSize(),0);return()=>clearTimeout(timer)},[map]);return null}
 
-export function SatelliteFarmMap({position,name}:{position:MapCoordinates;name:string}){
+const parcelColors: Record<string,string> = { crop:'#c8f169', pasture:'#74d68f', livestock:'#f2bf68', fallow:'#df9f68', other:'#78c9cf' };
+
+function MapViewport({position,polygons}:{position:MapCoordinates;polygons:ParsedPolygon[]}){
+  const map=useMap();
+  useEffect(()=>{
+    const timer=setTimeout(()=>{
+      map.invalidateSize();
+      const coordinates=polygons.flatMap(polygon=>polygon.rings.flat());
+      if(coordinates.length) map.fitBounds(latLngBounds(coordinates),{padding:[28,28],maxZoom:17});
+      else map.setView([position.latitude,position.longitude],15);
+    },50);
+    return()=>clearTimeout(timer);
+  },[map,polygons,position.latitude,position.longitude]);
+  return null;
+}
+
+export function SatelliteFarmMap({position,name,parcels=[],showParcelLabels=false}:{position:MapCoordinates;name:string;parcels?:Parcel[];showParcelLabels?:boolean}){
   const center:LatLngExpression=[position.latitude,position.longitude];
-  return <div className="satelliteFarmMap"><MapContainer center={center} zoom={15} scrollWheelZoom><SatelliteTiles/><Marker position={center} title={name}/><MapResize/></MapContainer><div className="satelliteMapCaption"><b>{name}</b><span>{position.latitude.toFixed(5)}, {position.longitude.toFixed(5)}</span><small>Imagen base de referencia · la fecha puede variar según proveedor</small></div></div>;
+  const visibleParcels=useMemo(()=>parcels.flatMap(parcel=>{const geometry=parseGeoJsonPolygon(parcel.boundary_geojson);return geometry?[{parcel,geometry}]:[]}),[parcels]);
+  const vertexCount=visibleParcels.reduce((sum,item)=>sum+item.geometry.vertexCount,0);
+  const polygons=useMemo(()=>visibleParcels.map(item=>item.geometry),[visibleParcels]);
+  return <div className="satelliteFarmMap"><MapContainer center={center} zoom={15} scrollWheelZoom><SatelliteTiles/><Marker position={center} title={name}/>{visibleParcels.map(({parcel,geometry})=><Polygon key={parcel.id} positions={geometry.rings} pathOptions={{color:parcelColors[parcel.use]??parcelColors.other,fillColor:parcelColors[parcel.use]??parcelColors.other,fillOpacity:.26,weight:3,opacity:1,className:'parcel-boundary'}}><Tooltip permanent={showParcelLabels} direction="center" className="parcelMapLabel"><b>{parcel.name}</b><span>{parcel.area_hectares.toFixed(2)} ha{parcel.crop?` · ${parcel.crop}`:''}</span></Tooltip></Polygon>)}<MapViewport position={position} polygons={polygons}/><MapResize/></MapContainer><div className="satelliteMapCaption"><b>{name}</b><span>{visibleParcels.length?`${visibleParcels.length} lotes · ${vertexCount} vértices`:`${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}`}</span><small>Imagen base de referencia · límites desde NODO</small></div></div>;
 }
