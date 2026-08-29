@@ -21,6 +21,10 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - Motor de decisiones: reglas trazables con fuente, confianza, vigencia y aprobación humana.
 - Selección geográfica: búsqueda de localidad con Open-Meteo Geocoding y ajuste visual en mapa Leaflet/OpenStreetMap.
 - Cartografía operativa: imagen satelital Esri World Imagery con etiquetas, fallback cartográfico y delimitación de lotes sobre el terreno.
+- Rodeo: stock por grupos derivado de eventos inmutables de nacimiento, compra, venta, mortandad, traslados, ajustes y pesajes.
+- Maquinaria: inventario técnico, horómetros, utilización, reparaciones, inspecciones y vencimiento de service calculado en PostgreSQL.
+- Economía: libro operativo append-only en la moneda base del establecimiento, referencias a lote/maquinaria y correcciones mediante contrapartidas trazables.
+- Gobierno de datos: mutaciones críticas encapsuladas en RPC transaccionales, RLS multiempresa, idempotencia y auditoría server-owned.
 
 La configuración necesaria y las dependencias externas están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). La aplicación no utiliza credenciales, usuarios, establecimientos, métricas ni sesiones simuladas. Una cuenta nueva inicia un onboarding real antes de mostrar el tablero.
 

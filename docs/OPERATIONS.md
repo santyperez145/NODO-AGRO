@@ -5,7 +5,7 @@
 - Proyecto: `NODO-AGRO`
 - Referencia: `kbhvgbczerfgdmfpugxr`
 - Región: São Paulo (`sa-east-1`)
-- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`
+- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`
 - Edge Functions: `sync-intelligence` (JWT de usuario), `ingest-telemetry` y `device-control` (token de dispositivo)
 
 Comandos reproducibles:
@@ -15,6 +15,8 @@ npx supabase link --project-ref kbhvgbczerfgdmfpugxr
 npx supabase migration list --linked
 npx supabase db push --linked
 npx supabase config push --project-ref kbhvgbczerfgdmfpugxr
+npx supabase db lint --linked --level warning
+npx supabase test db
 ```
 
 La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local` nunca se versionan. La aplicación utiliza exclusivamente la clave pública en el navegador.
@@ -27,6 +29,7 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - OAuth Google validado en el dominio definitivo.
 - SMTP productivo y entregabilidad validados.
 - Monitoreo de errores, uptime e ingestión IoT activo.
+- Revisión contable/impositiva del modelo económico aprobada por el profesional responsable.
 
 ## Evidencia verificada
 
@@ -45,5 +48,7 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - El editor admite polígonos de hasta 500 vértices, exige cierre explícito, permite deshacer y rechaza cruces del perímetro. La superficie se calcula de forma geodésica usando todos los vértices.
 - Los lotes existentes pueden reabrirse y redibujarse desde el inventario sin crear duplicados; la actualización se acota por lote, organización y establecimiento y exige una fila afectada.
 - Onboarding: validado con sesión real; no se creó un establecimiento ficticio.
+- Núcleo operativo: rodeo event-sourced, activos/horómetros, mantenimiento y libro económico append-only desplegados. Las seis tablas nuevas tienen RLS y sus escrituras críticas pasan por RPC idempotentes y auditadas.
+- Sesión real: Centro de mando, Rodeo, Maquinaria y Economía consultaron el proyecto remoto sin errores; los formularios mostraron los tres lotes persistidos y se verificaron sin crear stock, activos o movimientos ficticios.
 
 La organización Supabase comparte cuota con otros proyectos. NODO-AGRO registraba 0 GB de egress y cached egress al momento de la revisión; la advertencia de cuota era organizacional y no originada por NODO.

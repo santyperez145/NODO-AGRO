@@ -15,6 +15,12 @@
 - **Mapa y lotes:** Esri World Imagery es la base visual satelital, con atribución en pantalla y fallback a OpenStreetMap ante fallos de teselas. El productor delimita el lote por vértices; NODO calcula una superficie aproximada y persiste GeoJSON WGS84. La mensura declarada continúa siendo la referencia legal.
 - **Observabilidad:** errores estructurados y trazabilidad desde señal hasta recomendación.
 - **Seguridad física:** el MVP solo permite solicitar estado, cambiar el intervalo de reporte y reiniciar el agente de comunicación. Actuadores, bombas o movimiento de maquinaria requieren capacidades declaradas, interlocks locales, límites, aprobación humana y validación específica antes de habilitarse.
+- **Rodeo event-sourced:** `livestock_groups` conserva el estado materializado y `livestock_events` la historia inmutable. Las RPC bloquean la fila, validan dirección de cada movimiento, impiden stock negativo y son idempotentes.
+- **Maquinaria:** `machine_assets` mantiene el gemelo administrativo del activo. Uso, service, reparación e inspección se registran como eventos; el vencimiento se deriva del horómetro, último service e intervalo configurado.
+- **Libro operativo:** `financial_entries` es append-only. No se conceden INSERT, UPDATE ni DELETE al navegador; las RPC autorizadas crean asientos y una corrección genera la contrapartida opuesta enlazada. Los KPI usan una moneda base ISO por establecimiento para no sumar divisas incompatibles.
+- **Auditoría:** `operational_audit_events` solo puede escribirse desde funciones `security definer`; propietario y administrador pueden leerla, pero ningún rol del navegador puede alterarla.
+- **API transaccional:** las mutaciones críticas derivan organización y rol desde la sesión, validan referencias cruzadas al establecimiento y usan UUID de idempotencia. Las vistas de consulta declaran `security_invoker` para conservar RLS.
+- **Calidad continua:** GitHub Actions recompila el cliente, audita dependencias, levanta Supabase local, ejecuta lint SQL y pruebas pgTAP sobre RLS, privilegios, vistas y contrato append-only.
 
 ## Autenticación
 
@@ -32,6 +38,7 @@ Antes de declarar producción comercial completa todavía se requiere:
 2. Configurar SMTP transaccional propio; el correo incluido por Supabase es únicamente de prueba y tiene límites estrictos.
 3. Dibujar o importar polígonos parcelarios para calcular índices espectrales por lote.
 4. Validar hardware y calibración física en el establecimiento piloto.
+5. Definir el criterio contable, impositivo y centros de costo con el profesional responsable antes de usar el libro operativo como contabilidad formal.
 
 ## Contrato de telemetría
 
