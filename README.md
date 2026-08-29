@@ -23,3 +23,5 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - Cartografía operativa: imagen satelital Esri World Imagery con etiquetas, fallback cartográfico y delimitación de lotes sobre el terreno.
 
 La configuración necesaria y las dependencias externas están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). La aplicación no utiliza credenciales, usuarios, establecimientos, métricas ni sesiones simuladas. Una cuenta nueva inicia un onboarding real antes de mostrar el tablero.
+
+El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md).

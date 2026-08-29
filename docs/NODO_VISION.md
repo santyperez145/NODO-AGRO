@@ -73,4 +73,4 @@ Son hipótesis a validar, no precios publicados.
 
 ## Estado del producto
 
-El núcleo técnico del piloto ya cuenta con identidad real, aislamiento multiempresa, onboarding sin datos simulados, catálogo satelital, clima persistido, decisiones explicables e ingestión segura de telemetría. Todavía no equivale a validación agronómica o comercial: necesita coordenadas, lotes, dispositivos calibrados y resultados del establecimiento piloto.
+El núcleo técnico del piloto ya cuenta con identidad real, aislamiento multiempresa, onboarding sin datos simulados, catálogo satelital, clima persistido, decisiones explicables, ingestión segura y plano de control IoT con gemelos y confirmación de órdenes. Todavía no equivale a validación agronómica o comercial: necesita dispositivos físicos calibrados, resultados del establecimiento piloto y pruebas de seguridad antes de cualquier actuación sobre el campo.

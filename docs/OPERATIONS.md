@@ -5,8 +5,8 @@
 - Proyecto: `NODO-AGRO`
 - Referencia: `kbhvgbczerfgdmfpugxr`
 - Región: São Paulo (`sa-east-1`)
-- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`
-- Edge Functions: `sync-intelligence` (JWT de usuario) e `ingest-telemetry` (token de dispositivo)
+- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`
+- Edge Functions: `sync-intelligence` (JWT de usuario), `ingest-telemetry` y `device-control` (token de dispositivo)
 
 Comandos reproducibles:
 
@@ -36,6 +36,7 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - `ingest-telemetry` sin token y con token inválido: HTTP 401.
 - Red de sensores: alta visual verificada con asignación a los tres lotes reales, intervalo esperado e identificador técnico generado; la prueba se canceló antes de crear hardware ficticio.
 - `latest_sensor_readings` se consultó desde una sesión real con RLS, sin lecturas simuladas. La migración remota está alineada y `supabase db lint --linked --level warning` no reporta errores.
+- Plano de control: gemelos, cola durable, idempotencia, TTL, lease, reintentos, acuse y auditoría aplicados en PostgreSQL. `device-control` está desplegada sin JWT de usuario porque exige la credencial independiente del hardware.
 - Open-Meteo y Sentinel-2 STAC: respuestas reales verificadas desde el entorno de operación.
 - Esri World Imagery: teselas satelitales y capa de etiquetas verificadas en el establecimiento real, con atribución visible.
 - Editor parcelario: carga diferida, trazado de vértices y cálculo de superficie verificados sin guardar datos de prueba.

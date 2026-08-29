@@ -6,12 +6,15 @@
 - **Identidad y datos:** Supabase Auth y PostgreSQL. El navegador solo recibe la clave publicable. Los datos se aíslan por organización con grants y Row Level Security.
 - **Ingesta IoT:** Edge Function `ingest-telemetry` con secreto independiente por dispositivo, SHA-256 en reposo, máximo 100 lecturas por lote e idempotencia por dispositivo, fecha y métrica. Los sensores nunca usan credenciales del navegador.
 - **Red operativa:** cada dispositivo conserva nombre, identificador físico, tipo, lote opcional e intervalo esperado. `latest_sensor_readings` usa seguridad del invocador y RLS para devolver solamente la observación más reciente por dispositivo y métrica. El estado en línea se deriva de la última señal y del intervalo configurado, no de una etiqueta estática.
+- **Plano de control:** cada identidad posee un gemelo con estado deseado/reportado y versiones monótonas. Las órdenes usan allowlist, UUID de idempotencia, TTL, lease de entrega, reintentos, acuse explícito y eventos de auditoría. `device-control` autentica el mismo token del hardware; una orden entregada nunca se presenta como ejecutada hasta recibir `succeeded`.
+- **Transporte neutral:** HTTPS es el canal inicial por compatibilidad con gateways rurales y conectividad intermitente. Un adaptador MQTT 5 podrá mapear expiración, respuesta y correlación sin modificar el dominio, siguiendo el estándar OASIS. OPC UA queda como adaptador industrial para maquinaria que lo soporte y LoRaWAN/FUOTA para redes de campo y actualizaciones compatibles.
 - **Clima:** `sync-intelligence` consulta Open-Meteo, valida el contrato y persiste la observación. El cliente usa Open-Meteo solamente como degradación visible si aún no existe una captura persistida.
 - **Satélite:** `sync-intelligence` descubre escenas Sentinel-2 L2A en el catálogo STAC público de Microsoft Planetary Computer. NODO conserva fecha, nubosidad y vínculo a evidencia; no inventa NDVI sin procesar las bandas del lote.
 - **Decisiones:** reglas transparentes para lluvia, viento y helada. Cada recomendación conserva evidencia, confianza, vigencia, estado y usuario que decide.
 - **Ubicación:** el onboarding permite buscar una localidad, usar geolocalización del dispositivo o seleccionar el punto en un mapa. Las coordenadas WGS84 siguen disponibles como control técnico, pero no son la interacción principal.
 - **Mapa y lotes:** Esri World Imagery es la base visual satelital, con atribución en pantalla y fallback a OpenStreetMap ante fallos de teselas. El productor delimita el lote por vértices; NODO calcula una superficie aproximada y persiste GeoJSON WGS84. La mensura declarada continúa siendo la referencia legal.
 - **Observabilidad:** errores estructurados y trazabilidad desde señal hasta recomendación.
+- **Seguridad física:** el MVP solo permite solicitar estado, cambiar el intervalo de reporte y reiniciar el agente de comunicación. Actuadores, bombas o movimiento de maquinaria requieren capacidades declaradas, interlocks locales, límites, aprobación humana y validación específica antes de habilitarse.
 
 ## Autenticación
 
