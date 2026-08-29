@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import { useEffect } from 'react';
 import type { LatLngExpression } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 export type MapCoordinates = { latitude:number; longitude:number };
 

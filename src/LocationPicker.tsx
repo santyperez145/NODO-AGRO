@@ -4,7 +4,6 @@ import { LoaderCircle, Search } from 'lucide-react';
 import type { LatLngExpression, LeafletMouseEvent, Marker as LeafletMarker } from 'leaflet';
 import { searchPlaces, type PlaceResult } from './lib/geocoding';
 import { MapResize, SatelliteTiles } from './SatelliteMap';
-import 'leaflet/dist/leaflet.css';
 
 type Coordinates = { latitude: number; longitude: number };
 
