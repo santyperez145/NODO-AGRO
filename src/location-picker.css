@@ -1,0 +1,8 @@
+.placeSearchControls{display:flex;align-items:center;gap:7px;margin-top:5px}
+.placeSearchControls>svg{width:16px;color:#73806f}
+.placeSearchControls input{margin:0;flex:1}
+.placeSearchControls button{border:0;border-radius:7px;background:#263725;color:#fff;padding:10px 13px;font:600 9px inherit}
+.placeSearchControls button:disabled{opacity:.55;cursor:not-allowed}
+.placeSearchControls button svg{width:14px}
+.mapLoading{min-height:320px;border:1px solid #d6ddd2;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;color:#6d7969;font-size:10px}
+.mapLoading svg{width:17px}

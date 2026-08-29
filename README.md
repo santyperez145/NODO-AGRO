@@ -19,5 +19,6 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - Sentinel-2 L2A: descubrimiento de escenas mediante Microsoft Planetary Computer STAC.
 - Ingesta IoT: endpoint por dispositivo con token hasheado, lotes idempotentes y calidad de lectura.
 - Motor de decisiones: reglas trazables con fuente, confianza, vigencia y aprobación humana.
+- Selección geográfica: búsqueda de localidad con Open-Meteo Geocoding y ajuste visual en mapa Leaflet/OpenStreetMap.
 
 La configuración necesaria y las dependencias externas están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). La aplicación no utiliza credenciales, usuarios, establecimientos, métricas ni sesiones simuladas. Una cuenta nueva inicia un onboarding real antes de mostrar el tablero.

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import './styles.css';
 import './auth.css';
+import './location-picker.css';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 15 * 60_000, retry: 2 } } });
 
