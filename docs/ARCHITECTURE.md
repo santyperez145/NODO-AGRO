@@ -9,6 +9,7 @@
 - **Satélite:** `sync-intelligence` descubre escenas Sentinel-2 L2A en el catálogo STAC público de Microsoft Planetary Computer. NODO conserva fecha, nubosidad y vínculo a evidencia; no inventa NDVI sin procesar las bandas del lote.
 - **Decisiones:** reglas transparentes para lluvia, viento y helada. Cada recomendación conserva evidencia, confianza, vigencia, estado y usuario que decide.
 - **Ubicación:** el onboarding permite buscar una localidad, usar geolocalización del dispositivo o seleccionar el punto en un mapa. Las coordenadas WGS84 siguen disponibles como control técnico, pero no son la interacción principal.
+- **Mapa y lotes:** Esri World Imagery es la base visual satelital, con atribución en pantalla y fallback a OpenStreetMap ante fallos de teselas. El productor delimita el lote por vértices; NODO calcula una superficie aproximada y persiste GeoJSON WGS84. La mensura declarada continúa siendo la referencia legal.
 - **Observabilidad:** errores estructurados y trazabilidad desde señal hasta recomendación.
 
 ## Autenticación

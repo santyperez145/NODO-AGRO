@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Radio, RefreshCw, Satellite, ShieldAlert, Tractor, TrendingUp, Wifi } from 'lucide-react';
 import { AuthGate } from './auth/AuthGate';
 import { Onboarding } from './Onboarding';
@@ -7,6 +7,8 @@ import { useAgroWeather } from './lib/weather';
 import { useRecommendationAction, useSyncIntelligence, useWorkspace, type Recommendation, type Workspace } from './lib/workspace';
 
 const sections = [[Gauge,'Centro de mando'],[Map,'Mapa vivo'],[Leaf,'Cultivos'],[Beef,'Rodeo'],[Tractor,'Maquinaria'],[Radio,'Sensores'],[TrendingUp,'Economía']] as const;
+const SatelliteFarmMap = lazy(() => import('./SatelliteMap').then(module => ({ default:module.SatelliteFarmMap })));
+const ParcelEditor = lazy(() => import('./ParcelEditor').then(module => ({ default:module.ParcelEditor })));
 
 function WorkspaceShell() {
   const workspace = useWorkspace();
@@ -37,7 +39,7 @@ function Dashboard({data}: {data: Workspace}) {
     <header><div><p>{new Intl.DateTimeFormat('es-AR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()).toUpperCase()} · DATOS TRAZABLES</p><h1>{active}</h1><span>{establishment.latitude.toFixed(4)}, {establishment.longitude.toFixed(4)} · Rol {data.organization!.role}</span></div><div className="actions"><button className="syncButton" disabled={sync.isPending} onClick={()=>sync.mutate(establishment.id)}>{sync.isPending?<LoaderCircle className="spin"/>:<RefreshCw/>} Sincronizar fuentes</button></div></header>
     {sync.error&&<div className="sourceError"><ShieldAlert/>La sincronización falló: {sync.error instanceof Error?sync.error.message:'error no identificado'}. Los últimos datos válidos permanecen visibles.</div>}
     {sync.isSuccess&&<div className="sourceSuccess"><Database/>Fuentes actualizadas y persistidas con trazabilidad.</div>}
-    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:<OperationalSection name={active} data={data}/>}
+    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:active==='Mapa vivo'?<MapPanel data={data}/>:active==='Cultivos'?<CultivosPanel data={data}/>:<OperationalSection name={active} data={data}/>}
   </main></div>;
 }
 
@@ -47,7 +49,7 @@ function Overview({data,weather,evidenceScore,staleDevices,onDecision}:{data:Wor
   const establishment=data.establishment!;
   const sceneAge=data.satellite?Math.floor((Date.now()-new Date(data.satellite.captured_at).getTime())/86_400_000):null;
   return <>
-    <section className="hero"><article className="twin"><div className="title"><div><small>GEMELO DIGITAL · GEOREFERENCIADO</small><h2>{establishment.name}</h2></div><span>{data.satellite?`Sentinel-2 · hace ${sceneAge} días`:'Satélite aún no sincronizado'}</span></div><div className="realMap"><Map/><strong>{establishment.latitude.toFixed(5)}, {establishment.longitude.toFixed(5)}</strong><p>{data.parcels.length?`${data.parcels.length} unidades productivas registradas`:'Registrá lotes para construir el gemelo parcelario'}</p>{data.satellite?.catalog_url&&<a href={data.satellite.catalog_url} target="_blank" rel="noreferrer">Abrir evidencia satelital</a>}</div></article>
+    <section className="hero"><article className="twin"><div className="title"><div><small>GEMELO DIGITAL · GEOREFERENCIADO</small><h2>{establishment.name}</h2></div><span>{data.satellite?`Sentinel-2 · hace ${sceneAge} días`:'Satélite aún no sincronizado'}</span></div><Suspense fallback={<div className="realMap"><LoaderCircle className="spin"/><p>Cargando imagen satelital…</p></div>}><SatelliteFarmMap position={{latitude:establishment.latitude,longitude:establishment.longitude}} name={establishment.name}/></Suspense><div className="mapEvidence"><span>{data.parcels.length?`${data.parcels.length} unidades productivas registradas`:'Registrá lotes para construir el gemelo parcelario'}</span>{data.satellite?.catalog_url&&<a href={data.satellite.catalog_url} target="_blank" rel="noreferrer">Abrir escena Sentinel‑2 fechada</a>}</div></article>
       <article className="score"><small>COBERTURA DE EVIDENCIA</small><div><strong>{evidenceScore}</strong><span>/100</span></div><h3>{evidenceScore>=75?'Base operativa conectada':evidenceScore>=50?'Integración en progreso':'Faltan fuentes críticas'}</h3><p>Mide fuentes conectadas, no rendimiento productivo. Evita presentar estimaciones como hechos.</p><i><b style={{width:`${evidenceScore}%`}}/></i>{[['Lotes',String(data.parcels.length)],['Sensores',String(data.devices.length)],['Alertas vencidas',String(staleDevices)]].map(x=><dl key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></dl>)}</article></section>
     <section className="signals"><Metric icon={CloudRain} label="Lluvia 7 días" value={weather?`${weather.forecast_rain_7d_mm.toFixed(1)} mm`:'—'} detail={weather?.source??'Sin fuente'}/><Metric icon={Activity} label="Temperatura" value={weather?`${weather.temperature_c.toFixed(1)} °C`:'—'} detail={weather?`Humedad ${weather.humidity_pct.toFixed(0)}%`:'Sin observación'}/><Metric icon={Satellite} label="Escena satelital" value={sceneAge===null?'—':`${sceneAge} d`} detail={data.satellite?`${data.satellite.collection} · nubes ${data.satellite.cloud_cover_pct?.toFixed(0)??'—'}%`:'Sin escena'}/><Metric icon={Radio} label="Dispositivos" value={String(data.devices.length)} detail={`${data.devices.filter(d=>d.status==='online').length} en línea`}/></section>
     <section className="lower"><article className="panel"><div className="title"><div><h2>Decisiones con evidencia</h2><p>Reglas agronómicas transparentes; requieren aprobación humana</p></div><em>{data.recommendations.length} abiertas</em></div>{data.recommendations.length?data.recommendations.map(item=><Decision key={item.id} item={item} onDecision={onDecision}/>):<EmptyRow text="No hay alertas activas para las fuentes actuales."/>}</article>
@@ -63,6 +65,17 @@ function Decision({item,onDecision}:{item:Recommendation;onDecision:(id:string,s
 function OperationalSection({name,data}:{name:string;data:Workspace}){
   const content=name==='Mapa vivo'?{title:'Cobertura geoespacial',text:data.satellite?`Última escena ${data.satellite.collection}: ${new Date(data.satellite.captured_at).toLocaleString('es-AR')}.`:'Sin escena satelital persistida. Ejecutá Sincronizar fuentes.'}:name==='Cultivos'?{title:'Lotes y cultivos',text:data.parcels.length?`${data.parcels.length} unidades registradas sobre ${data.establishment?.area_hectares} ha.`:'Sin lotes. El alta parcelaria será el próximo flujo operativo.'}:name==='Sensores'?{title:'Red de sensores',text:data.devices.length?`${data.devices.length} dispositivos registrados; ${data.devices.filter(d=>d.status==='online').length} reportan en línea.`:'Sin dispositivos registrados. La ingestión está preparada para credenciales por equipo.'}:{title:name,text:'No hay activos reales registrados en este módulo. NODO no mostrará datos simulados.'};
   return <section className="moduleState"><div><Database/><small>MÓDULO OPERATIVO</small><h2>{content.title}</h2><p>{content.text}</p></div></section>;
+}
+
+function CultivosPanel({data}:{data:Workspace}){
+  const [editing,setEditing]=useState(data.parcels.length===0);
+  const establishment=data.establishment!;
+  return <section className="cultivosModule"><div className="moduleToolbar"><div><small>GESTIÓN PARCELARIA</small><h2>Lotes y cultivos</h2><p>{data.parcels.length?`${data.parcels.length} lotes delimitados y persistidos.`:'Dibujá el primer lote sobre la imagen satelital.'}</p></div><button onClick={()=>setEditing(value=>!value)}>{editing?'Ver inventario':'Agregar lote'}</button></div>{editing?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando editor parcelario…</div>}><ParcelEditor organizationId={data.organization!.id} establishmentId={establishment.id} center={{latitude:establishment.latitude,longitude:establishment.longitude}} onClose={()=>setEditing(false)}/></Suspense>:<article className="panel">{data.parcels.map(parcel=><div className="lot detailed" key={parcel.id}><i/><div><h3>{parcel.name}</h3><p>{parcel.crop??parcel.use}</p></div><span>{parcel.boundary_geojson?'Polígono validado':'Sin límite'}</span><strong>{parcel.area_hectares.toFixed(2)} ha</strong></div>)}</article>}</section>;
+}
+
+function MapPanel({data}:{data:Workspace}){
+  const establishment=data.establishment!;
+  return <section className="liveMapModule"><div className="moduleToolbar"><div><small>MAPA VIVO</small><h2>{establishment.name}</h2><p>Base visual satelital y evidencia independiente por fuente.</p></div></div><article className="liveMapCard"><Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando mapa satelital…</div>}><SatelliteFarmMap position={{latitude:establishment.latitude,longitude:establishment.longitude}} name={establishment.name}/></Suspense><div className="liveMapFacts"><div><small>ESCENA ANALÍTICA</small><b>{data.satellite?new Date(data.satellite.captured_at).toLocaleDateString('es-AR'):'Sin sincronizar'}</b><span>{data.satellite?`${data.satellite.collection} · ${data.satellite.cloud_cover_pct?.toFixed(0)??'—'}% nubes`:'Ejecutá Sincronizar fuentes'}</span></div><div><small>LOTES DELIMITADOS</small><b>{data.parcels.length}</b><span>{data.parcels.reduce((sum,parcel)=>sum+parcel.area_hectares,0).toFixed(2)} ha digitalizadas</span></div><div><small>TELEMETRÍA</small><b>{data.devices.filter(device=>device.status==='online').length}/{data.devices.length}</b><span>dispositivos en línea</span></div></div></article></section>;
 }
 
 export function App(){ return <AuthGate><WorkspaceShell/></AuthGate> }

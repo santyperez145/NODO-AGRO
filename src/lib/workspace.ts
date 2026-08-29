@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 
 export type Establishment = { id: string; organization_id: string; name: string; latitude: number; longitude: number; area_hectares: number | null };
-export type Parcel = { id: string; name: string; use: string; crop: string | null; area_hectares: number; health_score: number | null };
+export type Parcel = { id: string; name: string; use: string; crop: string | null; area_hectares: number; health_score: number | null; boundary_geojson: {type:'Polygon';coordinates:number[][][]}|null };
 export type Device = { id: string; external_id: string; kind: string; status: string; last_seen_at: string | null };
 export type WeatherObservation = { observed_at: string; temperature_c: number; humidity_pct: number; precipitation_mm: number; wind_kmh: number; forecast_rain_7d_mm: number; source: string };
 export type SatelliteScene = { captured_at: string; cloud_cover_pct: number | null; provider: string; collection: string; catalog_url: string | null };
@@ -40,7 +40,7 @@ export function useWorkspace() {
       const establishment = (establishments?.[0] as Establishment | undefined) ?? null;
       if (!establishment) return { organization, establishment: null, parcels: [], devices: [], weather: null, satellite: null, recommendations: [] };
       const [parcelsResult, devicesResult, weatherResult, satelliteResult, recommendationsResult] = await Promise.all([
-        client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score').eq('establishment_id', establishment.id).order('name'),
+        client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score,boundary_geojson').eq('establishment_id', establishment.id).order('name'),
         client.from('devices').select('id,external_id,kind,status,last_seen_at').eq('establishment_id', establishment.id).order('external_id'),
         client.from('weather_observations').select('observed_at,temperature_c,humidity_pct,precipitation_mm,wind_kmh,forecast_rain_7d_mm,source').eq('establishment_id', establishment.id).order('observed_at', { ascending: false }).limit(1).maybeSingle(),
         client.from('satellite_scenes').select('captured_at,cloud_cover_pct,provider,collection,catalog_url').eq('establishment_id', establishment.id).order('captured_at', { ascending: false }).limit(1).maybeSingle(),
@@ -92,5 +92,21 @@ export function useRecommendationAction() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspace'] }),
+  });
+}
+
+export function useCreateParcel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { organizationId:string; establishmentId:string; name:string; use:string; crop:string|null; areaHectares:number; boundary:{type:'Polygon';coordinates:number[][][]} }) => {
+      const client = await requireClient();
+      const { error } = await client.from('land_parcels').insert({
+        organization_id:input.organizationId, establishment_id:input.establishmentId,
+        name:input.name.trim(), use:input.use, crop:input.crop?.trim()||null,
+        area_hectares:input.areaHectares, boundary_geojson:input.boundary,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey:['workspace'] }),
   });
 }

@@ -35,6 +35,8 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - `sync-intelligence` sin JWT: HTTP 401.
 - `ingest-telemetry` sin token y con token inválido: HTTP 401.
 - Open-Meteo y Sentinel-2 STAC: respuestas reales verificadas desde el entorno de operación.
+- Esri World Imagery: teselas satelitales y capa de etiquetas verificadas en el establecimiento real, con atribución visible.
+- Editor parcelario: carga diferida, trazado de vértices y cálculo de superficie verificados sin guardar datos de prueba.
 - Onboarding: validado con sesión real; no se creó un establecimiento ficticio.
 
 La organización Supabase comparte cuota con otros proyectos. NODO-AGRO registraba 0 GB de egress y cached egress al momento de la revisión; la advertencia de cuota era organizacional y no originada por NODO.

@@ -5,6 +5,8 @@ import { App } from './App';
 import './styles.css';
 import './auth.css';
 import './location-picker.css';
+import './parcel-editor.css';
+import './live-map.css';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 15 * 60_000, retry: 2 } } });
 
