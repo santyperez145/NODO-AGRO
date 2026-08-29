@@ -17,7 +17,7 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - PostgreSQL multiempresa con grants y RLS.
 - Open-Meteo: clima actual y pronóstico de siete días, validados y persistidos.
 - Sentinel-2 L2A: descubrimiento de escenas mediante Microsoft Planetary Computer STAC.
-- Ingesta IoT: endpoint por dispositivo con token hasheado, lotes idempotentes y calidad de lectura.
+- Red IoT operativa: alta de dispositivos por lote, credencial de un solo uso, endpoint con token hasheado, lotes idempotentes, calidad y frescura de lectura.
 - Motor de decisiones: reglas trazables con fuente, confianza, vigencia y aprobación humana.
 - Selección geográfica: búsqueda de localidad con Open-Meteo Geocoding y ajuste visual en mapa Leaflet/OpenStreetMap.
 - Cartografía operativa: imagen satelital Esri World Imagery con etiquetas, fallback cartográfico y delimitación de lotes sobre el terreno.

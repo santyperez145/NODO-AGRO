@@ -5,6 +5,7 @@
 - **Cliente:** React, TypeScript y Vite. TanStack Query controla caché, reintentos y estados de red; Zod valida contratos externos.
 - **Identidad y datos:** Supabase Auth y PostgreSQL. El navegador solo recibe la clave publicable. Los datos se aíslan por organización con grants y Row Level Security.
 - **Ingesta IoT:** Edge Function `ingest-telemetry` con secreto independiente por dispositivo, SHA-256 en reposo, máximo 100 lecturas por lote e idempotencia por dispositivo, fecha y métrica. Los sensores nunca usan credenciales del navegador.
+- **Red operativa:** cada dispositivo conserva nombre, identificador físico, tipo, lote opcional e intervalo esperado. `latest_sensor_readings` usa seguridad del invocador y RLS para devolver solamente la observación más reciente por dispositivo y métrica. El estado en línea se deriva de la última señal y del intervalo configurado, no de una etiqueta estática.
 - **Clima:** `sync-intelligence` consulta Open-Meteo, valida el contrato y persiste la observación. El cliente usa Open-Meteo solamente como degradación visible si aún no existe una captura persistida.
 - **Satélite:** `sync-intelligence` descubre escenas Sentinel-2 L2A en el catálogo STAC público de Microsoft Planetary Computer. NODO conserva fecha, nubosidad y vínculo a evidencia; no inventa NDVI sin procesar las bandas del lote.
 - **Decisiones:** reglas transparentes para lluvia, viento y helada. Cada recomendación conserva evidencia, confianza, vigencia, estado y usuario que decide.
@@ -31,4 +32,4 @@ Antes de declarar producción comercial completa todavía se requiere:
 
 ## Contrato de telemetría
 
-`POST /functions/v1/ingest-telemetry` requiere `x-device-token` y un cuerpo `{"readings":[{"observed_at":"ISO-8601","metric":"soil.moisture","value":31.2,"unit":"pct","quality":98}]}`. Devuelve `202` y acepta de 1 a 100 observaciones. El token se entrega una sola vez mediante `provision_device`; debe almacenarse en el gateway, nunca en el frontend.
+`POST /functions/v1/ingest-telemetry` requiere `x-device-token` y un cuerpo `{"readings":[{"observed_at":"ISO-8601","metric":"soil.moisture","value":31.2,"unit":"pct","quality":98}]}`. Devuelve `202` y acepta de 1 a 100 observaciones. El token se entrega una sola vez mediante `provision_device`; la interfaz lo elimina de memoria al cerrar el alta y debe almacenarse en el gateway, nunca en código fuente o almacenamiento general del navegador.
