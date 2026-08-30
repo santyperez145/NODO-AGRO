@@ -18,7 +18,7 @@ Empresas mixtas agrícolas-ganaderas de 300 a 3.000 hectáreas, con rodeo, múlt
 - **NODO Earth:** Sentinel-1, Sentinel-2, clima y relieve; imágenes comerciales solo cuando el retorno lo justifique.
 - **NODO Tags:** RFID, BLE, GPS o LoRa según valor del activo y frecuencia necesaria.
 - **NODO Vision:** cámaras en manga, corrales y puntos operativos.
-- **NODO Brain:** grafo temporal entre lotes, cultivos, animales, máquinas, clima, labores, costos y resultados.
+- **NODO Brain:** capa de inteligencia transversal sobre el grafo temporal de lotes, cultivos, animales, máquinas, clima, labores, costos y resultados. Empieza con partes explicables y avanza a predicción sólo cuando exista evidencia etiquetada suficiente.
 
 NODO no fabricará silicio propio. Integrará hardware industrial y concentrará su propiedad intelectual en interoperabilidad, fusión de señales y decisiones verificables.
 
@@ -60,6 +60,7 @@ Son hipótesis a validar, no precios publicados.
 - Los datos identificables pertenecen al productor.
 - Recomendaciones críticas con fuente, confianza y aprobación humana.
 - No vender datos privados ni entrenar modelos cruzados sin autorización.
+- IA como infraestructura del producto, no como chat aislado: contexto server-side, evidencia, evaluación continua, costos medidos y proveedor intercambiable.
 - Medir resultados económicos y productivos, no cantidad de sensores.
 
 ## Próximas acciones
@@ -73,4 +74,4 @@ Son hipótesis a validar, no precios publicados.
 
 ## Estado del producto
 
-El núcleo técnico del piloto ya cuenta con identidad real, aislamiento multiempresa, onboarding sin datos simulados, catálogo satelital, clima persistido, decisiones explicables, ingestión segura y plano de control IoT con gemelos y confirmación de órdenes. Todavía no equivale a validación agronómica o comercial: necesita dispositivos físicos calibrados, resultados del establecimiento piloto y pruebas de seguridad antes de cualquier actuación sobre el campo.
+El núcleo técnico del piloto ya cuenta con identidad real, aislamiento multiempresa, onboarding sin datos simulados, catálogo satelital, clima persistido, decisiones explicables, ingestión segura, plano de control IoT con gemelos y una capa de inteligencia auditable desplegada. Todavía no equivale a validación agronómica o comercial: necesita proveedor de inferencia configurado, dispositivos físicos calibrados, resultados del establecimiento piloto, evaluación sistemática de los análisis y pruebas de seguridad antes de cualquier actuación sobre el campo.

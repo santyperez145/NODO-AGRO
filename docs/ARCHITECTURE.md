@@ -11,6 +11,10 @@
 - **Clima:** `sync-intelligence` consulta Open-Meteo, valida el contrato y persiste la observación. El cliente usa Open-Meteo solamente como degradación visible si aún no existe una captura persistida.
 - **Satélite:** `sync-intelligence` descubre escenas Sentinel-2 L2A en el catálogo STAC público de Microsoft Planetary Computer. NODO conserva fecha, nubosidad y vínculo a evidencia; no inventa NDVI sin procesar las bandas del lote.
 - **Decisiones:** reglas transparentes para lluvia, viento y helada. Cada recomendación conserva evidencia, confianza, vigencia, estado y usuario que decide.
+- **Inteligencia transversal:** `agro-intelligence` autentica al usuario, deriva organización y rol en servidor y arma un snapshot acotado desde las fuentes operativas. El navegador sólo envía el establecimiento y una pregunta opcional; no puede fabricar el contexto del modelo. Identificadores de dispositivos se reemplazan por alias efímeros y el detalle libre del libro económico no sale del servidor.
+- **Contrato de análisis:** el motor usa una salida JSON estricta, validación secundaria en servidor, límite de tokens, identificador de seguridad no personal, `store: false`, caché de 15 minutos y límites de 6 análisis por usuario/hora y 30 por organización/día. El modelo se configura mediante `NODO_AI_MODEL` para permitir evaluación, migración de proveedor y control de costos sin cambiar el dominio.
+- **Gobierno de inteligencia:** `ai_analysis_runs` conserva versión de prompt, hash, evidencia exacta, resultado, consumo y fallo técnico. RLS permite lectura a miembros, pero ninguna sesión del navegador puede insertar o alterar resultados. `latest_ai_analysis` usa seguridad del invocador, oculta partes vencidos después de 24 horas y el feedback pasa por una RPC. Las claves y el proveedor nunca se exponen en la interfaz.
+- **Límite de autonomía:** el análisis trata todo texto operativo como datos no confiables, declara faltantes y no prescribe fitosanitarios, dosis, tratamientos veterinarios ni maniobras físicas. Las propuestas críticas requieren aprobación humana y no se envían al plano de control IoT.
 - **Ubicación:** el onboarding permite buscar una localidad, usar geolocalización del dispositivo o seleccionar el punto en un mapa. Las coordenadas WGS84 siguen disponibles como control técnico, pero no son la interacción principal.
 - **Mapa y lotes:** Esri World Imagery es la base visual satelital, con atribución en pantalla y fallback a OpenStreetMap ante fallos de teselas. El productor delimita el lote por vértices; NODO calcula una superficie aproximada y persiste GeoJSON WGS84. La mensura declarada continúa siendo la referencia legal.
 - **Observabilidad:** errores estructurados y trazabilidad desde señal hasta recomendación.
@@ -39,6 +43,7 @@ Antes de declarar producción comercial completa todavía se requiere:
 3. Dibujar o importar polígonos parcelarios para calcular índices espectrales por lote.
 4. Validar hardware y calibración física en el establecimiento piloto.
 5. Definir el criterio contable, impositivo y centros de costo con el profesional responsable antes de usar el libro operativo como contabilidad formal.
+6. Configurar `OPENAI_API_KEY` como secreto de Edge Functions y ejecutar la evaluación de calidad/costo antes de habilitar el Parte Inteligente a pilotos. La función y la interfaz están desplegadas, pero sin ese secreto no se realizan inferencias ni se simulan respuestas.
 
 ## Contrato de telemetría
 

@@ -1,16 +1,16 @@
-# Relevo — Founding brief v0.1
+# NODO Flota — cuña comercial v0.2
 
 ## Decisión fundacional
 
-Construiremos **Relevo**, software B2B, multimarca y offline-first para mantenimiento y continuidad operativa de maquinaria agrícola. El punto de entrada son contratistas rurales y productores argentinos con flotas de 5 a 40 máquinas.
+NODO es la plataforma integral; **NODO Flota** será la cuña comercial inicial para mantenimiento y continuidad operativa de maquinaria agrícola. El punto de entrada son contratistas rurales y productores argentinos con flotas de 5 a 40 máquinas. No es otra marca ni otro producto: cada evento de máquina alimenta el mismo gemelo digital de NODO.
 
-No construiremos inicialmente un ERP, un marketplace generalista, telemetría propia ni un “agrónomo IA”. El dolor elegido es concreto: una máquina detenida en una ventana corta de siembra, pulverización o cosecha cuesta mucho más que una suscripción y hoy su contexto suele quedar repartido entre memoria, WhatsApp, papeles y portales de fabricantes.
+No construiremos inicialmente un ERP ni un marketplace generalista. La inteligencia será transversal y sustentada en evidencia, no un chat separado. El dolor elegido es concreto: una máquina detenida en una ventana corta de siembra, pulverización o cosecha cuesta mucho más que una suscripción y hoy su contexto suele quedar repartido entre memoria, mensajería, papeles y portales de fabricantes.
 
 ## Promesa
 
 > Menos horas paradas. Cada máquina con memoria.
 
-El usuario envía un audio o foto. Relevo identifica máquina y síntoma, propone preguntas de descarte, busca el procedimiento aprobado, crea una orden y registra evidencia. Las recomendaciones sensibles deben citar manual/fuente y requieren confirmación humana.
+El usuario envía un audio o foto. NODO identifica máquina y síntoma, propone preguntas de descarte, busca el procedimiento autorizado, crea una orden y registra evidencia. Las recomendaciones sensibles deben citar manual/fuente y requieren confirmación humana.
 
 ## Ventaja defendible
 
@@ -92,7 +92,7 @@ Avanzar si 3 flotas usan el flujo semanalmente, 2 aceptan pagar al menos USD 99/
 
 ## Próximas decisiones
 
-1. Validar que “Relevo” sea registrable como marca y asegurar dominio; es nombre de trabajo, no activo confirmado.
+1. Validar que “NODO” y sus submarcas sean registrables y asegurar dominio; el nombre de trabajo todavía no es un activo confirmado.
 2. Elegir zona piloto por acceso a 3 flotas, no por tamaño teórico de mercado.
 3. Diseñar el guion de entrevista y reclutar primeros pilotos.
 4. Tras evidencia, construir autenticación, modelo de datos y captura offline.
