@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AlertCircle, Eye, EyeOff, LoaderCircle, LockKeyhole } from 'lucide-react';
-import { isAuthConfigured, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
+import { authRedirectUrl, isAuthConfigured, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -34,7 +34,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setSubmitting(true);
     const result = mode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: authRedirectUrl() } });
     setSubmitting(false);
     if (result.error) setMessage({ tone: 'error', text: result.error.message });
     else if (mode === 'signup' && !result.data.session) setMessage({ tone: 'ok', text: 'Revisá tu correo para confirmar la cuenta.' });
@@ -44,7 +44,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setMessage(null);
     if (!supabase) return;
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}${window.location.pathname}` } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: authRedirectUrl() } });
     if (error) { setMessage({ tone: 'error', text: error.message }); setSubmitting(false); }
   }
 

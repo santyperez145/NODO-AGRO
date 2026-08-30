@@ -40,6 +40,8 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - RLS probado para usuario miembro, no miembro y anónimo.
 - OAuth Google validado en el dominio definitivo.
 - SMTP productivo y entregabilidad validados.
+- Dominio definitivo incluido en Auth Redirect URLs y en `TEAM_ALLOWED_REDIRECT_ORIGINS`.
+- Invitación nueva, aceptación con contraseña y Google, cuenta existente, vencimiento, revocación, cambio de rol y baja ensayados sin romper el aislamiento multiempresa.
 - Monitoreo de errores, uptime e ingestión IoT activo.
 - Evaluación de inteligencia con casos reales, tasa de aceptación, groundedness, latencia p95 y costo por establecimiento dentro del presupuesto aprobado.
 - Revisión contable/impositiva del modelo económico aprobada por el profesional responsable.
@@ -76,6 +78,8 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - Validación visual de Flota: una sesión `owner` cargó las tablas remotas, mostró cero órdenes y bloqueó correctamente `Nueva orden` porque no existe maquinaria real. No se insertaron activos ni órdenes ficticias y la consola permaneció sin errores.
 - Capa transversal: tablas, RLS, vista segura, integridad multiempresa y función `agro-intelligence` desplegadas. La llamada sin JWT devuelve 401. Una cuenta de servicio exclusiva y los secretos `OPENAI_API_KEY`/`NODO_AI_MODEL` están configurados; una sesión `owner` recorrió autorización, snapshot, proveedor y auditoría. La primera inferencia fue rechazada porque la organización API tiene saldo `USD 0,00`, dependencia que la interfaz muestra sin generar contenido ficticio.
 - UI real: el Parte Inteligente detectó 3/7 dominios con información en el establecimiento actual, renderizó correctamente junto al mapa y no produjo errores de consola. La compilación de producción terminó correctamente.
+- NODO Teams: las migraciones de invitaciones y auditoría están aplicadas; `team-admin` está desplegada con JWT obligatorio; `OPTIONS` respondió 200 y una llamada sin autorización fue rechazada con 401. La sesión `owner` consultó por RPC el único miembro real, mostró cero invitaciones y renderizó el módulo en escritorio y 390×844 sin enviar correos ni modificar accesos. El lint remoto no encontró errores de esquema y la consola no registró errores.
+- El test pgTAP fue ampliado a 95 aserciones sobre tablas, RLS, privilegios y funciones de identidad. No se ejecutó en esta estación porque Docker Desktop no estaba activo; el build, el lint remoto, el endpoint y la lectura autenticada sí fueron verificados. CI debe ejecutar el pgTAP antes de integrar.
 
 La organización Supabase comparte cuota con otros proyectos. NODO-AGRO registraba 0 GB de egress y cached egress al momento de la revisión; la advertencia de cuota era organizacional y no originada por NODO.
 

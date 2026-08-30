@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { supabase } from './supabase';
+import { clearInvitationFromUrl, invitationIdFromUrl, supabase } from './supabase';
 import type { GeoJsonPolygon } from './geojson';
 
 export type Establishment = { id: string; organization_id: string; name: string; latitude: number; longitude: number; area_hectares: number | null; base_currency:string; country_code:string; locale:string; timezone:string; unit_system:'metric'|'imperial' };
@@ -32,8 +32,10 @@ export type AiPriority = { domain:'crop'|'livestock'|'machinery'|'iot'|'weather'
 export type AiBriefResult = { summary:string; data_quality_score:number; priorities:AiPriority[]; opportunities:string[]; limitations:string[] };
 export type AiAnalysisRun = { id:string; organization_id:string; establishment_id:string; analysis_type:'operational_brief'; question:string|null; prompt_version:string; result:AiBriefResult; created_at:string; completed_at:string; expires_at:string };
 
+export type OrganizationMembership = { id:string; name:string; role:'owner'|'admin'|'agronomist'|'operator'|'viewer'; userId:string };
 export type Workspace = {
-  organization: { id: string; name: string; role: string; userId:string } | null;
+  organizations: OrganizationMembership[];
+  organization: OrganizationMembership | null;
   establishment: Establishment | null;
   parcels: Parcel[];
   devices: Device[];
@@ -70,23 +72,46 @@ async function requireClient() {
   return supabase;
 }
 
-export function useWorkspace() {
+function invitationErrorMessage(message:string){
+  if(message.includes('invitation_expired'))return 'La invitación venció. Pedile a un administrador que genere una nueva.';
+  if(message.includes('invitation_email_mismatch'))return 'La invitación pertenece a otro correo. Ingresá con la cuenta invitada.';
+  if(message.includes('invitation_not_pending'))return 'La invitación ya fue utilizada, revocada o venció.';
+  if(message.includes('invitation_not_found'))return 'La invitación no existe o ya no está disponible.';
+  return `No pudimos aceptar la invitación: ${message}`;
+}
+
+export function useWorkspace(selectedOrganizationId?:string|null) {
   return useQuery<Workspace>({
-    queryKey: ['workspace'],
+    queryKey: ['workspace',selectedOrganizationId??null],
     staleTime: 30_000,
     refetchInterval: 60_000,
+    retry:false,
     queryFn: async () => {
       const client = await requireClient();
-      const { data: membership, error: membershipError } = await client
-        .from('organization_members').select('organization_id,user_id,role,organizations(id,name)').limit(1).maybeSingle();
+      const invitationId=invitationIdFromUrl();
+      if(invitationId){
+        const {error}=await client.rpc('accept_organization_invitation',{target_invitation:invitationId});
+        if(error){
+          if(['invitation_expired','invitation_email_mismatch','invitation_not_pending','invitation_not_found'].some(code=>error.message.includes(code)))clearInvitationFromUrl();
+          throw new Error(invitationErrorMessage(error.message));
+        }
+        clearInvitationFromUrl();
+      }
+      const { data: memberships, error: membershipError } = await client
+        .from('organization_members').select('organization_id,user_id,role,created_at,organizations(id,name)').order('created_at');
       if (membershipError) throw membershipError;
-      if (!membership) return { organization:null, establishment:null, ...emptyOperation() };
+      if (!memberships?.length) return { organizations:[], organization:null, establishment:null, ...emptyOperation() };
+      const organizations=memberships.map(membership=>{
+        const organizationRecord=Array.isArray(membership.organizations)?membership.organizations[0]:membership.organizations;
+        return {id:membership.organization_id,name:organizationRecord?.name??'Organización',role:membership.role,userId:membership.user_id} as OrganizationMembership;
+      });
+      const membership = memberships.find(item=>item.organization_id===selectedOrganizationId)??memberships[0];
       const organizationRecord = Array.isArray(membership.organizations) ? membership.organizations[0] : membership.organizations;
-      const organization = { id: membership.organization_id, name: organizationRecord?.name ?? 'Organización', role: membership.role, userId:membership.user_id };
+      const organization = { id: membership.organization_id, name: organizationRecord?.name ?? 'Organización', role: membership.role, userId:membership.user_id } as OrganizationMembership;
       const { data: establishments, error: establishmentError } = await client.from('establishments').select('*').eq('organization_id', organization.id).order('created_at').limit(1);
       if (establishmentError) throw establishmentError;
       const establishment = (establishments?.[0] as Establishment | undefined) ?? null;
-      if (!establishment) return { organization, establishment:null, ...emptyOperation() };
+      if (!establishment) return { organizations, organization, establishment:null, ...emptyOperation() };
       const [assigneesResult, parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
         client.rpc('list_scouting_assignees',{target_establishment:establishment.id}),
         client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score,boundary_geojson').eq('establishment_id', establishment.id).order('name'),
@@ -114,7 +139,7 @@ export function useWorkspace() {
         client.from('latest_ai_analysis').select('id,organization_id,establishment_id,analysis_type,question,prompt_version,result,created_at,completed_at,expires_at').eq('establishment_id',establishment.id).maybeSingle(),
       ]);
       for (const result of [assigneesResult, parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
-      return { organization, establishment, scoutingAssignees:assigneesResult.data as ScoutingAssignee[], parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], scoutingFindingMedia:scoutingMediaResult.data as ScoutingFindingMedia[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
+      return { organizations, organization, establishment, scoutingAssignees:assigneesResult.data as ScoutingAssignee[], parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], scoutingFindingMedia:scoutingMediaResult.data as ScoutingFindingMedia[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
     },
   });
 }

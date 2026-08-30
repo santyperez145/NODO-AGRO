@@ -4,6 +4,9 @@
 
 - **Cliente:** React, TypeScript y Vite. TanStack Query controla caché, reintentos y estados de red; Zod valida contratos externos.
 - **Identidad y datos:** Supabase Auth y PostgreSQL. El navegador solo recibe la clave publicable. Los datos se aíslan por organización con grants y Row Level Security.
+- **NODO Teams:** `organization_invitations` conserva correo normalizado, rol, entrega, vencimiento, aceptación y revocación. `team-admin` valida el JWT, vuelve a comprobar el rol en PostgreSQL y utiliza la API administrativa sólo en servidor. La aceptación compara el correo exacto de `auth.users`; conocer el UUID no concede acceso. Las cuentas existentes reciben un enlace manual y las nuevas pasan por el proveedor de correo.
+- **Baja y permisos:** propietario y administrador operan RPC con reglas distintas; nadie puede modificar al propietario ni autoexpulsarse. Una baja se bloquea mientras existan recorridas abiertas asignadas y, al eliminar la membresía, todas las políticas RLS dejan de autorizar esa empresa inmediatamente. La cuenta Auth global no se elimina porque puede pertenecer a otras organizaciones.
+- **Auditoría de identidad:** `organization_security_events` separa cambios de acceso de la bitácora agronómica y sólo puede leerla un propietario o administrador. El navegador no puede insertar, actualizar ni borrar invitaciones o eventos.
 - **Ingesta IoT:** Edge Function `ingest-telemetry` con secreto independiente por dispositivo, SHA-256 en reposo, máximo 100 lecturas por lote e idempotencia por dispositivo, fecha y métrica. Los sensores nunca usan credenciales del navegador.
 - **Red operativa:** cada dispositivo conserva nombre, identificador físico, tipo, lote opcional e intervalo esperado. `latest_sensor_readings` usa seguridad del invocador y RLS para devolver solamente la observación más reciente por dispositivo y métrica. El estado en línea se deriva de la última señal y del intervalo configurado, no de una etiqueta estática.
 - **Plano de control:** cada identidad posee un gemelo con estado deseado/reportado y versiones monótonas. Las órdenes usan allowlist, UUID de idempotencia, TTL, lease de entrega, reintentos, acuse explícito y eventos de auditoría. `device-control` autentica el mismo token del hardware; una orden entregada nunca se presenta como ejecutada hasta recibir `succeeded`.
@@ -38,7 +41,7 @@
 
 ## Autenticación
 
-El cliente implementa sesiones reales con Supabase: email/contraseña, alta con confirmación, Google OAuth PKCE, persistencia, renovación y cierre de sesión. Después de intercambiar el código elimina de la URL códigos, errores o fragmentos OAuth sensibles. No existen usuarios demo ni bypass. Sin configuración válida se bloquea el envío y se explica la dependencia pendiente.
+El cliente implementa sesiones reales con Supabase: email/contraseña, alta con confirmación, Google OAuth PKCE, persistencia, renovación y cierre local de sesión. Después de intercambiar el código elimina de la URL códigos, errores o fragmentos OAuth sensibles, pero conserva temporalmente un identificador de invitación allowlisted hasta aceptarlo. No existen usuarios demo ni bypass. Sin configuración válida se bloquea el envío y se explica la dependencia pendiente.
 
 ## Estado de infraestructura
 
@@ -49,7 +52,7 @@ Google OAuth está configurado y validado con un inicio de sesión real. El clie
 Antes de declarar producción comercial completa todavía se requiere:
 
 1. Sustituir las URLs locales de Auth por el dominio definitivo cuando exista hosting.
-2. Configurar SMTP transaccional propio; el correo incluido por Supabase es únicamente de prueba y tiene límites estrictos.
+2. Configurar SMTP transaccional propio, un subdominio de autenticación con SPF/DKIM/DMARC y `TEAM_ALLOWED_REDIRECT_ORIGINS`; el correo incluido por Supabase es únicamente de prueba y no sirve para pilotos externos.
 3. Implementar máscara SCL por píxel, serie temporal y evaluación agronómica antes de convertir índices en alertas automatizadas.
 4. Validar hardware y calibración física en el establecimiento piloto.
 5. Definir el criterio contable, impositivo y centros de costo con el profesional responsable antes de usar el libro operativo como contabilidad formal.

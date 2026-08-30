@@ -14,6 +14,7 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 ## Integraciones reales
 
 - Supabase Auth: email/contraseña, confirmación y Google OAuth con PKCE y saneamiento automático del callback.
+- NODO Teams: invitaciones ligadas al correo, roles de mínimo privilegio, expiración, revocación, baja segura, auditoría de seguridad y selector multiempresa.
 - PostgreSQL multiempresa con grants y RLS.
 - Open-Meteo: clima actual y pronóstico de siete días, validados y persistidos.
 - NODO Earth: descubrimiento de escenas Sentinel-2 L2A mediante STAC, color real fechado, mapas NDVI/NDMI y estadísticas reales por polígono desde Microsoft Planetary Computer.
@@ -32,4 +33,4 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 
 La configuración necesaria y las dependencias externas están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). La aplicación no utiliza credenciales, usuarios, establecimientos, métricas ni sesiones simuladas. Una cuenta nueva inicia un onboarding real antes de mostrar el tablero.
 
-El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md), el uso de recorridas en [`docs/SCOUTING_PROTOCOL.md`](docs/SCOUTING_PROTOCOL.md), el plan de compañía en [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md), la diferenciación en [`docs/COMPETITIVE_STRATEGY.md`](docs/COMPETITIVE_STRATEGY.md) y los gates regulatorios y de protección en [`docs/LAUNCH_READINESS.md`](docs/LAUNCH_READINESS.md).
+El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md), el uso de recorridas en [`docs/SCOUTING_PROTOCOL.md`](docs/SCOUTING_PROTOCOL.md), la administración de acceso en [`docs/TEAM_OPERATIONS.md`](docs/TEAM_OPERATIONS.md), el plan de compañía en [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md), la diferenciación en [`docs/COMPETITIVE_STRATEGY.md`](docs/COMPETITIVE_STRATEGY.md) y los gates regulatorios y de protección en [`docs/LAUNCH_READINESS.md`](docs/LAUNCH_READINESS.md).

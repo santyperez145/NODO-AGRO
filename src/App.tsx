@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Pencil, Radio, RefreshCw, Satellite, ScanSearch, ShieldAlert, Tractor, TrendingUp, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Pencil, Radio, RefreshCw, Satellite, ScanSearch, ShieldAlert, Tractor, TrendingUp, Users, Wifi, WifiOff } from 'lucide-react';
 import { AuthGate } from './auth/AuthGate';
 import { Onboarding } from './Onboarding';
 import { supabase } from './lib/supabase';
@@ -8,7 +8,7 @@ import { useAgroWeather } from './lib/weather';
 import { deviceConnectionState, useRecommendationAction, useSyncIntelligence, useWorkspace, type Recommendation, type Workspace } from './lib/workspace';
 import type { ScoutSeed } from './ScoutPanel';
 
-const sections = [[Gauge,'Centro de mando'],[Map,'Mapa vivo'],[Leaf,'Cultivos'],[ScanSearch,'Recorridas'],[Beef,'Rodeo'],[Tractor,'Maquinaria'],[Radio,'Sensores'],[TrendingUp,'Economía']] as const;
+const sections = [[Gauge,'Centro de mando'],[Map,'Mapa vivo'],[Leaf,'Cultivos'],[ScanSearch,'Recorridas'],[Beef,'Rodeo'],[Tractor,'Maquinaria'],[Radio,'Sensores'],[TrendingUp,'Economía'],[Users,'Equipo']] as const;
 const SatelliteFarmMap = lazy(() => import('./SatelliteMap').then(module => ({ default:module.SatelliteFarmMap })));
 const ParcelEditor = lazy(() => import('./ParcelEditor').then(module => ({ default:module.ParcelEditor })));
 const SensorsPanel = lazy(() => import('./SensorsPanel').then(module => ({ default:module.SensorsPanel })));
@@ -18,16 +18,22 @@ const EconomyPanel = lazy(() => import('./OperationsPanels').then(module => ({ d
 const IntelligenceBrief = lazy(() => import('./IntelligenceBrief').then(module => ({ default:module.IntelligenceBrief })));
 const SatelliteIntelligencePanel = lazy(() => import('./SatelliteIntelligence').then(module => ({ default:module.SatelliteIntelligencePanel })));
 const ScoutPanel = lazy(() => import('./ScoutPanel').then(module => ({ default:module.ScoutPanel })));
+const TeamPanel = lazy(() => import('./TeamPanel').then(module => ({ default:module.TeamPanel })));
 
 function WorkspaceShell() {
-  const workspace = useWorkspace();
+  const [selectedOrganizationId,setSelectedOrganizationId]=useState(()=>localStorage.getItem('nodo-selected-organization'));
+  const workspace = useWorkspace(selectedOrganizationId);
+  useEffect(()=>{
+    const activeId=workspace.data?.organization?.id;
+    if(activeId&&activeId!==selectedOrganizationId){setSelectedOrganizationId(activeId);localStorage.setItem('nodo-selected-organization',activeId)}
+  },[selectedOrganizationId,workspace.data?.organization?.id]);
   if (workspace.isLoading) return <div className="authLoading"><LoaderCircle className="spin"/><span>Cargando operación real…</span></div>;
   if (workspace.error) return <div className="fatalState"><ShieldAlert/><h1>No pudimos cargar tu operación</h1><p>{workspace.error instanceof Error?workspace.error.message:'Error inesperado'}</p><button onClick={()=>workspace.refetch()}>Reintentar</button></div>;
   if (!workspace.data?.organization || !workspace.data.establishment) return <Onboarding/>;
-  return <Dashboard data={workspace.data}/>;
+  return <Dashboard data={workspace.data} onOrganizationChange={id=>{setSelectedOrganizationId(id);localStorage.setItem('nodo-selected-organization',id)}}/>;
 }
 
-function Dashboard({data}: {data: Workspace}) {
+function Dashboard({data,onOrganizationChange}: {data: Workspace;onOrganizationChange:(id:string)=>void}) {
   const [active,setActive]=useState<(typeof sections)[number][1]>('Centro de mando');
   const [scoutSeed,setScoutSeed]=useState<ScoutSeed|null>(null);
   const establishment = data.establishment!;
@@ -38,19 +44,22 @@ function Dashboard({data}: {data: Workspace}) {
   const staleDevices = data.devices.filter(device=>deviceConnectionState(device)!=='online').length;
   const evidenceScore = Math.round((Number(Boolean(data.weather))+Number(Boolean(data.satellite))+Number(data.devices.length>0)+Number(data.parcels.length>0))*25);
   const sourceWeather = data.weather ?? (liveWeather.data ? { observed_at:new Date().toISOString(), temperature_c:liveWeather.data.temperature, humidity_pct:liveWeather.data.humidity, precipitation_mm:liveWeather.data.precipitationNow, wind_kmh:liveWeather.data.wind, forecast_rain_7d_mm:liveWeather.data.rain7d, source:liveWeather.data.source } : null);
+  const managesTeam=data.organization!.role==='owner'||data.organization!.role==='admin';
+  const visibleSections=managesTeam?sections:sections.filter(([,name])=>name!=='Equipo');
+  useEffect(()=>{if(active==='Equipo'&&!managesTeam)setActive('Centro de mando')},[active,managesTeam]);
 
   return <div className="app"><aside>
     <div className="logo"><span><Activity/></span><div><b>NODO</b><small>AGRO INTELLIGENCE</small></div></div>
-    <div className="farm"><small>ESTABLECIMIENTO</small><b>{establishment.name}</b><span>{establishment.area_hectares?.toLocaleString('es-AR') ?? '—'} ha · {data.organization!.name}</span></div>
-    <nav>{sections.map(([Icon,name])=><button className={active===name?'active':''} onClick={()=>setActive(name)} key={name}><Icon/><span>{name}</span></button>)}</nav>
+    <div className="farm"><small>ESTABLECIMIENTO</small><b>{establishment.name}</b><span>{establishment.area_hectares?.toLocaleString('es-AR') ?? '—'} ha</span>{data.organizations.length>1?<select aria-label="Empresa activa" value={data.organization!.id} onChange={event=>onOrganizationChange(event.target.value)}>{data.organizations.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>:<em>{data.organization!.name}</em>}</div>
+    <nav>{visibleSections.map(([Icon,name])=><button aria-label={name} className={active===name?'active':''} onClick={()=>setActive(name)} key={name}><Icon/><span>{name}</span></button>)}</nav>
     <div className="network"><Wifi/><div><b>{online?'Red NODO · Conectada':'Red NODO · Sin telemetría'}</b><small>{online} en línea · {data.devices.length} dispositivos</small></div></div>
-    <button className="logout" onClick={()=>void supabase?.auth.signOut()}><LogOut/> Cerrar sesión</button>
+    <button className="logout" onClick={()=>void supabase?.auth.signOut({scope:'local'})}><LogOut/> Cerrar sesión</button>
   </aside><main>
     <header><div><p>{new Intl.DateTimeFormat('es-AR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()).toUpperCase()} · DATOS TRAZABLES</p><h1>{active}</h1><span>{establishment.latitude.toFixed(4)}, {establishment.longitude.toFixed(4)} · Rol {data.organization!.role}</span></div><div className="actions"><button className="syncButton" disabled={sync.isPending} onClick={()=>sync.mutate(establishment.id)}>{sync.isPending?<LoaderCircle className="spin"/>:<RefreshCw/>} Sincronizar fuentes</button></div></header>
     <ConnectivityBanner/>
     {sync.error&&<div className="sourceError"><ShieldAlert/>La sincronización falló: {sync.error instanceof Error?sync.error.message:'error no identificado'}. Los últimos datos válidos permanecen visibles.</div>}
     {sync.isSuccess&&<div className="sourceSuccess"><Database/>Fuentes actualizadas y persistidas con trazabilidad.</div>}
-    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:active==='Mapa vivo'?<MapPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Recorridas'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando recorridas…</div>}><ScoutPanel data={data} seed={scoutSeed} onSeedConsumed={()=>setScoutSeed(null)}/></Suspense>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
+    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:active==='Mapa vivo'?<MapPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Recorridas'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando recorridas…</div>}><ScoutPanel data={data} seed={scoutSeed} onSeedConsumed={()=>setScoutSeed(null)}/></Suspense>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:active==='Equipo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando gestión de acceso…</div>}><TeamPanel organization={data.organization!}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
   </main></div>;
 }
 

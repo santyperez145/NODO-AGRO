@@ -17,6 +17,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - Rodeo event-sourced, maquinaria por horómetro y libro económico append-only.
 - Órdenes de trabajo NODO Flota con estado, prioridad, vencimiento, responsable, costo y cierre auditable.
 - Parte Inteligente transversal con contexto server-side, auditoría, calidad de datos, límites de consumo y aprobación humana.
+- NODO Teams con directorio administrativo, invitaciones email-bound, roles, expiración, revocación, baja protegida, auditoría y navegación multiempresa.
 
 Esto es un núcleo técnico de piloto, no product-market fit, validación agronómica, seguridad certificada ni operación comercial escalable.
 
@@ -26,7 +27,8 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Elegir una zona y tres establecimientos con acceso semanal al decisor.
 - Levantar inventario real, conectividad, una estación, cuatro sondas, RFID/balanza existente y telemetría básica de dos máquinas.
-- Pilotear NODO Flota y NODO Scout ya implementados; agregar invitaciones y baja de miembros, vault offline cifrado, carga multimedia reanudable y análisis antimalware.
+- Pilotear NODO Flota, NODO Scout y NODO Teams ya implementados; agregar vault offline cifrado, carga multimedia reanudable y análisis antimalware.
+- Configurar dominio, SMTP transaccional y entregabilidad; ensayar invitación, aceptación, revocación y offboarding con dos cuentas reales antes de incorporar personal del piloto.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.
 
@@ -40,7 +42,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 - Incorporar NODO Terrain 3D sólo con DEM licenciado, resolución y precisión vertical declaradas; luego evaluar escurrimiento y transitabilidad con evidencia de campo.
 - Importadores CSV y conectores iniciales para sistemas de balanza/RFID y maquinaria autorizados.
 - Experimentos A/B de recomendaciones y registro de resultado para aprender qué funciona por contexto, sin mezclar datos privados.
-- Administración de organizaciones, invitaciones, permisos y facturación SaaS.
+- Transferencia de propiedad con step-up MFA, permisos por capacidad y facturación SaaS; organizaciones, invitaciones, roles y baja básica ya están implementados.
 
 **Puerta:** diez cuentas pagas, activación en menos de siete días, retención de cohorte a 90 días mayor a 80% y margen bruto de software positivo antes del soporte de campo.
 

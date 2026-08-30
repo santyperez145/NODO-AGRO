@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(78);
+select plan(95);
 
 select has_table('public','livestock_groups','livestock groups table exists');
 select has_table('public','livestock_events','append-only livestock events table exists');
@@ -20,6 +20,8 @@ select has_table('public','scouting_visits','scouting visits table exists');
 select has_table('public','scouting_visit_events','append-only scouting visit history exists');
 select has_table('public','scouting_findings','append-only field findings table exists');
 select has_table('public','scouting_finding_media','private scouting evidence metadata exists');
+select has_table('public','organization_invitations','organization invitations table exists');
+select has_table('public','organization_security_events','organization security audit exists');
 
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='livestock_groups'),true,'livestock groups has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='livestock_events'),true,'livestock events has RLS enabled');
@@ -37,6 +39,8 @@ select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_visit_events'),true,'scouting history has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_findings'),true,'scouting findings have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_finding_media'),true,'scouting evidence metadata has RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='organization_invitations'),true,'organization invitations have RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='organization_security_events'),true,'organization security events have RLS enabled');
 
 select is(has_table_privilege('authenticated','public.livestock_groups','INSERT'),false,'authenticated cannot bypass livestock RPC');
 select is(has_table_privilege('authenticated','public.machine_assets','UPDATE'),false,'authenticated cannot directly alter machine state');
@@ -61,6 +65,11 @@ select is(has_table_privilege('authenticated','public.scouting_findings','INSERT
 select is(has_table_privilege('authenticated','public.scouting_finding_media','INSERT'),false,'browser cannot attach evidence metadata directly');
 select is(has_table_privilege('authenticated','public.scouting_finding_media','UPDATE'),false,'browser cannot alter evidence metadata');
 select ok(has_table_privilege('authenticated','public.scouting_finding_media','SELECT'),'members can inspect authorized evidence metadata');
+select is(has_table_privilege('authenticated','public.organization_invitations','SELECT'),false,'browser cannot enumerate invitation tokens');
+select is(has_table_privilege('authenticated','public.organization_invitations','INSERT'),false,'browser cannot forge organization invitations');
+select is(has_table_privilege('authenticated','public.organization_invitations','UPDATE'),false,'browser cannot alter invitation state directly');
+select is(has_table_privilege('authenticated','public.organization_invitations','DELETE'),false,'browser cannot delete invitation history');
+select ok(has_table_privilege('authenticated','public.organization_security_events','SELECT'),'authenticated managers can inspect security events through RLS');
 
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='operational_summary'),'operational summary runs with invoker security');
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='latest_ai_analysis'),'latest intelligence view runs with invoker security');
@@ -76,6 +85,14 @@ select is(has_function_privilege('authenticated','private.can_operate_scouting_v
 select ok(has_function_privilege('authenticated','public.transition_scouting_visit(uuid,scouting_visit_status,text,uuid)','EXECUTE'),'authenticated role can transition guarded scouting visits');
 select ok(has_function_privilege('authenticated','public.record_scouting_finding(uuid,scouting_finding_category,scouting_severity,timestamp with time zone,double precision,double precision,double precision,text,uuid)','EXECUTE'),'authenticated role can record guarded field findings');
 select is(has_function_privilege('authenticated','public.attach_scouting_media_server(uuid,text,text,text,bigint,text,text,timestamp with time zone,text,uuid,uuid)','EXECUTE'),false,'browser cannot call the service-only media attachment function');
+select ok(has_function_privilege('authenticated','public.list_organization_team(uuid)','EXECUTE'),'authenticated managers can call the guarded team directory');
+select ok(has_function_privilege('authenticated','public.accept_organization_invitation(uuid)','EXECUTE'),'authenticated users can accept an email-bound invitation');
+select ok(has_function_privilege('authenticated','public.change_organization_member_role(uuid,uuid,organization_role,uuid)','EXECUTE'),'authenticated managers can call guarded role changes');
+select ok(has_function_privilege('authenticated','public.remove_organization_member(uuid,uuid,uuid)','EXECUTE'),'authenticated managers can call guarded offboarding');
+select ok(has_function_privilege('authenticated','public.revoke_organization_invitation(uuid,uuid)','EXECUTE'),'authenticated managers can revoke pending invitations');
+select is(has_function_privilege('authenticated','public.prepare_organization_invitation_server(uuid,text,organization_role,timestamp with time zone,uuid,uuid)','EXECUTE'),false,'browser cannot prepare server-owned invitations');
+select is(has_function_privilege('authenticated','public.mark_organization_invitation_delivery_server(uuid,text,uuid,text)','EXECUTE'),false,'browser cannot forge invitation delivery state');
+select is(has_function_privilege('authenticated','public.lookup_organization_invitation_user_server(uuid)','EXECUTE'),false,'browser cannot enumerate existing Auth users through invitations');
 select ok((select pg_get_constraintdef(oid) like '%maintenance_work_order%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts fleet work orders');
 select ok((select pg_get_constraintdef(oid) like '%scouting_finding%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts scouting entities');
 select ok((select pg_get_constraintdef(oid) like '%scouting_media%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts private scouting media');
