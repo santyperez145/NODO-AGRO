@@ -43,13 +43,14 @@ El activo acumulativo es ese historial longitudinal de señal → decisión → 
 - Ejecuciones auditables, aislamiento multiempresa, roles y escrituras únicamente server-side.
 - Calidad conservadora por nubosidad global y suficiencia de píxeles.
 - Recorrida dirigida por diferencia relativa dentro de la misma escena, sin afirmar causa ni prescribir intervención.
+- NODO Scout ya conecta esa señal con una recorrida planificada, hallazgos de campo, ubicación opcional, bitácora y cierre; la evidencia satelital original queda congelada para auditoría.
 
 Limitación actual: la versión `unmasked-v1` no aplica máscara de nubes por píxel ni serie temporal. Es útil como inspección relativa y piloto, no como diagnóstico o certificación de rendimiento.
 
 ## Próximos productos priorizados
 
 1. **Earth Time:** serie temporal por lote, máscara SCL, percentiles robustos y cambio contra baseline fenológico.
-2. **Scout:** recorridas offline, punto de interés, foto/audio, severidad y cierre con evidencia.
+2. **Scout Field:** extender el flujo ya operativo con cola offline cifrada, fotografía privada/reanudable y responsables configurables.
 3. **Water:** balance hídrico que combine NDMI, lluvia, suelo y riego; nunca sustituirá medición calibrada.
 4. **Terrain 3D:** relieve con DEM verificado, resolución/licencia/precisión vertical visibles y sombreado útil para escurrimiento.
 5. **Outcome Ledger:** relación entre señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar.

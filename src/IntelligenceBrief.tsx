@@ -8,7 +8,7 @@ const severityLabels:Record<AiPriority['severity'],string>={critical:'Crítica',
 
 function coverage(data:Workspace){
   return [
-    ['Clima',Boolean(data.weather)],['Satélite',Boolean(data.satellite)],['IoT',data.devices.length>0],
+    ['Clima',Boolean(data.weather)],['Satélite',Boolean(data.satellite)],['Campo',data.scoutingFindings.length>0],['IoT',data.devices.length>0],
     ['Cultivos',data.parcels.length>0],['Rodeo',data.livestockGroups.length>0],['Maquinaria',data.machineAssets.length>0],['Economía',data.financialEntries.length>0],
   ] as const;
 }

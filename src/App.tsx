@@ -1,13 +1,14 @@
 import { lazy, Suspense, useState } from 'react';
-import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Pencil, Radio, RefreshCw, Satellite, ShieldAlert, Tractor, TrendingUp, Wifi } from 'lucide-react';
+import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Pencil, Radio, RefreshCw, Satellite, ScanSearch, ShieldAlert, Tractor, TrendingUp, Wifi } from 'lucide-react';
 import { AuthGate } from './auth/AuthGate';
 import { Onboarding } from './Onboarding';
 import { supabase } from './lib/supabase';
 import { parseGeoJsonPolygon } from './lib/geojson';
 import { useAgroWeather } from './lib/weather';
 import { deviceConnectionState, useRecommendationAction, useSyncIntelligence, useWorkspace, type Recommendation, type Workspace } from './lib/workspace';
+import type { ScoutSeed } from './ScoutPanel';
 
-const sections = [[Gauge,'Centro de mando'],[Map,'Mapa vivo'],[Leaf,'Cultivos'],[Beef,'Rodeo'],[Tractor,'Maquinaria'],[Radio,'Sensores'],[TrendingUp,'Economía']] as const;
+const sections = [[Gauge,'Centro de mando'],[Map,'Mapa vivo'],[Leaf,'Cultivos'],[ScanSearch,'Recorridas'],[Beef,'Rodeo'],[Tractor,'Maquinaria'],[Radio,'Sensores'],[TrendingUp,'Economía']] as const;
 const SatelliteFarmMap = lazy(() => import('./SatelliteMap').then(module => ({ default:module.SatelliteFarmMap })));
 const ParcelEditor = lazy(() => import('./ParcelEditor').then(module => ({ default:module.ParcelEditor })));
 const SensorsPanel = lazy(() => import('./SensorsPanel').then(module => ({ default:module.SensorsPanel })));
@@ -16,6 +17,7 @@ const MachineryPanel = lazy(() => import('./OperationsPanels').then(module => ({
 const EconomyPanel = lazy(() => import('./OperationsPanels').then(module => ({ default:module.EconomyPanel })));
 const IntelligenceBrief = lazy(() => import('./IntelligenceBrief').then(module => ({ default:module.IntelligenceBrief })));
 const SatelliteIntelligencePanel = lazy(() => import('./SatelliteIntelligence').then(module => ({ default:module.SatelliteIntelligencePanel })));
+const ScoutPanel = lazy(() => import('./ScoutPanel').then(module => ({ default:module.ScoutPanel })));
 
 function WorkspaceShell() {
   const workspace = useWorkspace();
@@ -27,6 +29,7 @@ function WorkspaceShell() {
 
 function Dashboard({data}: {data: Workspace}) {
   const [active,setActive]=useState<(typeof sections)[number][1]>('Centro de mando');
+  const [scoutSeed,setScoutSeed]=useState<ScoutSeed|null>(null);
   const establishment = data.establishment!;
   const liveWeather = useAgroWeather(establishment.latitude, establishment.longitude);
   const sync = useSyncIntelligence();
@@ -46,7 +49,7 @@ function Dashboard({data}: {data: Workspace}) {
     <header><div><p>{new Intl.DateTimeFormat('es-AR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()).toUpperCase()} · DATOS TRAZABLES</p><h1>{active}</h1><span>{establishment.latitude.toFixed(4)}, {establishment.longitude.toFixed(4)} · Rol {data.organization!.role}</span></div><div className="actions"><button className="syncButton" disabled={sync.isPending} onClick={()=>sync.mutate(establishment.id)}>{sync.isPending?<LoaderCircle className="spin"/>:<RefreshCw/>} Sincronizar fuentes</button></div></header>
     {sync.error&&<div className="sourceError"><ShieldAlert/>La sincronización falló: {sync.error instanceof Error?sync.error.message:'error no identificado'}. Los últimos datos válidos permanecen visibles.</div>}
     {sync.isSuccess&&<div className="sourceSuccess"><Database/>Fuentes actualizadas y persistidas con trazabilidad.</div>}
-    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:active==='Mapa vivo'?<MapPanel data={data}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
+    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:active==='Mapa vivo'?<MapPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Recorridas'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando recorridas…</div>}><ScoutPanel data={data} seed={scoutSeed} onSeedConsumed={()=>setScoutSeed(null)}/></Suspense>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
   </main></div>;
 }
 
@@ -77,8 +80,8 @@ function CultivosPanel({data}:{data:Workspace}){
   return <section className="cultivosModule"><div className="moduleToolbar"><div><small>GESTIÓN PARCELARIA</small><h2>Lotes y cultivos</h2><p>{data.parcels.length?`${data.parcels.length} lotes delimitados y persistidos.`:'Dibujá el primer lote sobre la imagen satelital.'}</p></div><button onClick={()=>setEditor(editor?null:'new')}>{editor?'Ver inventario':'Agregar lote'}</button></div>{editor?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando editor parcelario…</div>}><ParcelEditor key={editor} organizationId={data.organization!.id} establishmentId={establishment.id} center={{latitude:establishment.latitude,longitude:establishment.longitude}} parcel={selectedParcel} onClose={()=>setEditor(null)}/></Suspense>:<article className="panel">{data.parcels.map(parcel=><div className="lot detailed" key={parcel.id}><i/><div><h3>{parcel.name}</h3><p>{parcel.crop??parcel.use}</p></div><span>{parseGeoJsonPolygon(parcel.boundary_geojson)?'Polígono validado':'Sin límite válido'}</span><strong>{parcel.area_hectares.toFixed(2)} ha</strong><button className="editParcel" onClick={()=>setEditor(parcel.id)}><Pencil/> Editar límite</button></div>)}</article>}</section>;
 }
 
-function MapPanel({data}:{data:Workspace}){
-  return <Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando NODO Earth…</div>}><SatelliteIntelligencePanel data={data}/></Suspense>;
+function MapPanel({data,onPlanScout}:{data:Workspace;onPlanScout:(seed:ScoutSeed)=>void}){
+  return <Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando NODO Earth…</div>}><SatelliteIntelligencePanel data={data} onPlanScout={onPlanScout}/></Suspense>;
 }
 
 export function App(){ return <AuthGate><WorkspaceShell/></AuthGate> }

@@ -17,6 +17,7 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - PostgreSQL multiempresa con grants y RLS.
 - Open-Meteo: clima actual y pronóstico de siete días, validados y persistidos.
 - NODO Earth: descubrimiento de escenas Sentinel-2 L2A mediante STAC, color real fechado, mapas NDVI/NDMI y estadísticas reales por polígono desde Microsoft Planetary Computer.
+- NODO Scout: recorridas por lote enlazadas a evidencia satelital o manual, máquina de estados, hallazgos georreferenciados opcionales y cierre auditable.
 - Red IoT operativa: alta de dispositivos por lote, credencial de un solo uso, endpoint con token hasheado, lotes idempotentes, calidad y frescura de lectura.
 - Motor de decisiones: reglas trazables con fuente, confianza, vigencia y aprobación humana.
 - Inteligencia transversal: un parte operativo server-side cruza clima, satélite, IoT, cultivos, rodeo, maquinaria y economía; conserva el snapshot de evidencia, aplica límites de consumo y exige salida estructurada validada.
@@ -30,4 +31,4 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 
 La configuración necesaria y las dependencias externas están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). La aplicación no utiliza credenciales, usuarios, establecimientos, métricas ni sesiones simuladas. Una cuenta nueva inicia un onboarding real antes de mostrar el tablero.
 
-El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md). El plan para convertir el producto en una compañía financiable está en [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md), la diferenciación frente a plataformas agrícolas en [`docs/COMPETITIVE_STRATEGY.md`](docs/COMPETITIVE_STRATEGY.md) y los gates regulatorios y de protección en [`docs/LAUNCH_READINESS.md`](docs/LAUNCH_READINESS.md).
+El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md), el uso de recorridas en [`docs/SCOUTING_PROTOCOL.md`](docs/SCOUTING_PROTOCOL.md), el plan de compañía en [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md), la diferenciación en [`docs/COMPETITIVE_STRATEGY.md`](docs/COMPETITIVE_STRATEGY.md) y los gates regulatorios y de protección en [`docs/LAUNCH_READINESS.md`](docs/LAUNCH_READINESS.md).

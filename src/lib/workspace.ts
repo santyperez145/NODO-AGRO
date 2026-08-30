@@ -14,6 +14,9 @@ export type SatelliteScene = { id:string; external_id:string; captured_at: strin
 export type SatelliteIndexName = 'ndvi'|'ndmi';
 export type ParcelSatelliteMetric = { id:string; parcel_id:string; satellite_scene_id:string; analysis_run_id:string; index_name:SatelliteIndexName; captured_at:string; cloud_cover_pct:number|null; mean_value:number; min_value:number; max_value:number; stddev_value:number; percentile_02:number|null; percentile_98:number|null; valid_percent:number; pixel_count:number; quality_status:'usable'|'cloud_limited'|'insufficient_pixels'; source_provider:string; algorithm_version:string; computed_at:string };
 export type SatelliteAnalysisRun = { id:string; satellite_scene_id:string; index_name:SatelliteIndexName; status:'running'|'completed'|'partial'|'failed'; parcel_count:number; succeeded_count:number; failed_count:number; error_code:string|null; started_at:string; completed_at:string|null };
+export type ScoutingVisit = { id:string; parcel_id:string; source_type:'manual'|'satellite_ndvi'|'satellite_ndmi'|'weather'|'iot'; source_metric_id:string|null; source_snapshot:Record<string,unknown>; title:string; objective:string|null; priority:'low'|'medium'|'high'|'critical'; status:'planned'|'in_progress'|'completed'|'cancelled'; scheduled_for:string; assigned_to:string|null; summary:string|null; started_at:string|null; completed_at:string|null; cancelled_at:string|null; lock_version:number; created_at:string; updated_at:string };
+export type ScoutingVisitEvent = { id:number; visit_id:string; action:'created'|'status_changed'; previous_status:ScoutingVisit['status']|null; next_status:ScoutingVisit['status']; details:Record<string,unknown>; created_at:string };
+export type ScoutingFinding = { id:string; parcel_id:string; visit_id:string; category:'crop_condition'|'pest_signal'|'water'|'soil'|'infrastructure'|'other'; severity:'info'|'low'|'medium'|'high'|'critical'; observed_at:string; latitude:number|null; longitude:number|null; accuracy_m:number|null; notes:string; created_at:string };
 export type Recommendation = { id: string; title: string; rationale: string; action: string; priority: 'critical'|'high'|'medium'|'low'; status: 'open'|'accepted'|'dismissed'|'completed'; confidence: number; evidence: unknown[]; valid_until: string | null; generated_at: string };
 export type LivestockGroup = { id:string; parcel_id:string|null; name:string; species:'cattle'|'sheep'|'goat'|'horse'|'other'; category:string; head_count:number; average_weight_kg:number|null; status:'active'|'closed'; last_observed_at:string; notes:string|null };
 export type LivestockEvent = { id:string; group_id:string; event_type:'initial_stock'|'birth'|'purchase'|'sale'|'mortality'|'transfer_in'|'transfer_out'|'adjustment'|'weighing'; occurred_at:string; head_delta:number; resulting_head_count:number; average_weight_kg:number|null; reason:string|null; created_at:string };
@@ -39,6 +42,9 @@ export type Workspace = {
   satellite: SatelliteScene | null;
   satelliteMetrics: ParcelSatelliteMetric[];
   satelliteAnalysisRuns: SatelliteAnalysisRun[];
+  scoutingVisits: ScoutingVisit[];
+  scoutingVisitEvents: ScoutingVisitEvent[];
+  scoutingFindings: ScoutingFinding[];
   recommendations: Recommendation[];
   livestockGroups: LivestockGroup[];
   livestockEvents: LivestockEvent[];
@@ -52,7 +58,7 @@ export type Workspace = {
 };
 
 function emptyOperation() {
-  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
+  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], scoutingVisits:[], scoutingVisitEvents:[], scoutingFindings:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
 }
 
 async function requireClient() {
@@ -77,7 +83,7 @@ export function useWorkspace() {
       if (establishmentError) throw establishmentError;
       const establishment = (establishments?.[0] as Establishment | undefined) ?? null;
       if (!establishment) return { organization, establishment:null, ...emptyOperation() };
-      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
+      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
         client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score,boundary_geojson').eq('establishment_id', establishment.id).order('name'),
         client.from('devices').select('id,external_id,display_name,kind,status,last_seen_at,parcel_id,expected_interval_minutes,installed_at').eq('establishment_id', establishment.id).order('display_name'),
         client.from('latest_sensor_readings').select('id,device_id,observed_at,metric,value,unit,quality,ingested_at').eq('establishment_id', establishment.id).order('observed_at', { ascending: false }).limit(500),
@@ -87,6 +93,9 @@ export function useWorkspace() {
         client.from('satellite_scenes').select('id,external_id,captured_at,cloud_cover_pct,provider,collection,catalog_url').eq('establishment_id', establishment.id).order('captured_at', { ascending: false }).limit(1).maybeSingle(),
         client.from('parcel_satellite_metrics').select('id,parcel_id,satellite_scene_id,analysis_run_id,index_name,captured_at,cloud_cover_pct,mean_value,min_value,max_value,stddev_value,percentile_02,percentile_98,valid_percent,pixel_count,quality_status,source_provider,algorithm_version,computed_at').eq('establishment_id', establishment.id).order('captured_at',{ascending:false}).limit(500),
         client.from('satellite_analysis_runs').select('id,satellite_scene_id,index_name,status,parcel_count,succeeded_count,failed_count,error_code,started_at,completed_at').eq('establishment_id', establishment.id).order('started_at',{ascending:false}).limit(20),
+        client.from('scouting_visits').select('id,parcel_id,source_type,source_metric_id,source_snapshot,title,objective,priority,status,scheduled_for,assigned_to,summary,started_at,completed_at,cancelled_at,lock_version,created_at,updated_at').eq('establishment_id',establishment.id).order('scheduled_for',{ascending:false}).limit(200),
+        client.from('scouting_visit_events').select('id,visit_id,action,previous_status,next_status,details,created_at').eq('establishment_id',establishment.id).order('created_at',{ascending:false}).limit(400),
+        client.from('scouting_findings').select('id,parcel_id,visit_id,category,severity,observed_at,latitude,longitude,accuracy_m,notes,created_at').eq('establishment_id',establishment.id).order('observed_at',{ascending:false}).limit(500),
         client.from('recommendations').select('id,title,rationale,action,priority,status,confidence,evidence,valid_until,generated_at').eq('establishment_id', establishment.id).eq('status', 'open').order('generated_at', { ascending: false }).limit(8),
         client.from('livestock_groups').select('id,parcel_id,name,species,category,head_count,average_weight_kg,status,last_observed_at,notes').eq('establishment_id',establishment.id).order('status').order('name'),
         client.from('livestock_events').select('id,group_id,event_type,occurred_at,head_delta,resulting_head_count,average_weight_kg,reason,created_at').eq('establishment_id',establishment.id).order('occurred_at',{ascending:false}).limit(100),
@@ -98,8 +107,8 @@ export function useWorkspace() {
         client.from('operational_summary').select('*').eq('establishment_id',establishment.id).maybeSingle(),
         client.from('latest_ai_analysis').select('id,organization_id,establishment_id,analysis_type,question,prompt_version,result,created_at,completed_at,expires_at').eq('establishment_id',establishment.id).maybeSingle(),
       ]);
-      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
-      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
+      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
+      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
     },
   });
 }
@@ -369,6 +378,51 @@ export function useTransitionMachineWorkOrder(){
         target_order:input.workOrderId,next_state:input.nextStatus,closing_note:input.closingNote.trim(),final_cost:input.finalCost,request_id:crypto.randomUUID(),
       });
       if(error)throw error; return entityIdSchema.parse(data);
+    },
+    onSuccess:()=>invalidateWorkspace(queryClient),
+  });
+}
+
+export function useCreateScoutingVisit(){
+  const queryClient=useQueryClient();
+  return useMutation({
+    mutationFn:async(input:{establishmentId:string;parcelId:string;sourceMetricId:string|null;title:string;objective:string;priority:ScoutingVisit['priority'];scheduledFor:string})=>{
+      const client=await requireClient();
+      const {data,error}=await client.rpc('create_scouting_visit',{
+        target_establishment:input.establishmentId,target_parcel:input.parcelId,target_source_metric:input.sourceMetricId,
+        visit_title:input.title.trim(),visit_objective:input.objective.trim(),visit_priority:input.priority,
+        visit_scheduled_for:input.scheduledFor,request_id:crypto.randomUUID(),
+      });
+      if(error)throw error;return entityIdSchema.parse(data);
+    },
+    onSuccess:()=>invalidateWorkspace(queryClient),
+  });
+}
+
+export function useTransitionScoutingVisit(){
+  const queryClient=useQueryClient();
+  return useMutation({
+    mutationFn:async(input:{visitId:string;nextStatus:ScoutingVisit['status'];summary:string})=>{
+      const client=await requireClient();
+      const {data,error}=await client.rpc('transition_scouting_visit',{
+        target_visit:input.visitId,next_state:input.nextStatus,closing_summary:input.summary.trim(),request_id:crypto.randomUUID(),
+      });
+      if(error)throw error;return entityIdSchema.parse(data);
+    },
+    onSuccess:()=>invalidateWorkspace(queryClient),
+  });
+}
+
+export function useRecordScoutingFinding(){
+  const queryClient=useQueryClient();
+  return useMutation({
+    mutationFn:async(input:{visitId:string;category:ScoutingFinding['category'];severity:ScoutingFinding['severity'];observedAt:string;latitude:number|null;longitude:number|null;accuracyM:number|null;notes:string})=>{
+      const client=await requireClient();
+      const {data,error}=await client.rpc('record_scouting_finding',{
+        target_visit:input.visitId,finding_category:input.category,finding_severity:input.severity,finding_observed_at:input.observedAt,
+        finding_latitude:input.latitude,finding_longitude:input.longitude,finding_accuracy_m:input.accuracyM,finding_notes:input.notes.trim(),request_id:crypto.randomUUID(),
+      });
+      if(error)throw error;return entityIdSchema.parse(data);
     },
     onSuccess:()=>invalidateWorkspace(queryClient),
   });

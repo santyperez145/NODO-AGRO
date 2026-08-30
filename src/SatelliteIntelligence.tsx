@@ -4,6 +4,7 @@ import { SatelliteFarmMap, type SatelliteRasterLayer } from './SatelliteMap';
 import { parseGeoJsonPolygon } from './lib/geojson';
 import { planetaryRasterUrl, satelliteLayers, type SatelliteLayerName } from './lib/satellite';
 import { useComputeSatelliteAnalytics, type ParcelSatelliteMetric, type SatelliteIndexName, type Workspace } from './lib/workspace';
+import type { ScoutSeed } from './ScoutPanel';
 
 const roleCanAnalyze=new Set(['owner','admin','agronomist','operator']);
 
@@ -17,7 +18,7 @@ function runLabel(status:'running'|'completed'|'partial'|'failed'){
   return status==='completed'?'Completo':status==='partial'?'Parcial':status==='failed'?'Fallido':'Procesando';
 }
 
-export function SatelliteIntelligencePanel({data}:{data:Workspace}){
+export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;onPlanScout?:(seed:ScoutSeed)=>void}){
   const establishment=data.establishment!;
   const [layer,setLayer]=useState<SatelliteLayerName>(data.satellite?'truecolor':'reference');
   const [opacity,setOpacity]=useState(.82);
@@ -66,7 +67,7 @@ export function SatelliteIntelligencePanel({data}:{data:Workspace}){
 
     {analysisIndex&&<div className="earthAnalysisGrid">
       <article className="earthMetrics"><div className="earthSectionTitle"><div><small>MÉTRICAS POR POLÍGONO</small><h3>{analysisIndex==='ndvi'?'Vigor relativo NDVI':'Humedad vegetal NDMI'}</h3></div><span>{metrics.length?`${metrics.length} calculadas`:'Pendiente'}</span></div>{metrics.length?<div className="earthMetricTable">{metrics.map(metric=>{const parcel=data.parcels.find(item=>item.id===metric.parcel_id);return <div key={metric.id} className={metric.quality_status}><div><b>{parcel?.name??'Lote'}</b><small>{qualityLabel(metric)}</small></div><strong>{metric.mean_value.toFixed(3)}</strong><span>rango {metric.min_value.toFixed(3)} a {metric.max_value.toFixed(3)}</span><span>σ {metric.stddev_value.toFixed(3)} · {metric.pixel_count.toLocaleString('es-AR')} px</span></div>})}</div>:<div className="earthEmpty"><ScanSearch/><b>Todavía no hay estadísticas para esta escena</b><span>El mapa muestra píxeles reales; “Analizar lotes” calcula y guarda el resumen de cada polígono.</span></div>}</article>
-      <article className="earthFieldPlan"><div className="earthSectionTitle"><div><small>RECORRIDA DIRIGIDA</small><h3>Prioridad con evidencia</h3></div><Sparkles/></div>{priorityParcel&&priorityMetric?<><div className="fieldPriority"><small>VERIFICAR PRIMERO</small><b>{priorityParcel.name}</b><strong>{priorityMetric.mean_value.toFixed(3)}</strong></div><p>Es el menor valor relativo entre los lotes comparables de esta misma escena. Revisá el área en campo antes de decidir una intervención.</p><ul><li>Comparar cultivo, estado fenológico y manejo.</li><li>Tomar fotos y observaciones georreferenciadas.</li><li>Contrastar con sensor de suelo y clima cuando estén disponibles.</li></ul></>:<div className="earthEmpty compact"><ScanSearch/><b>Se necesitan al menos dos lotes aptos</b><span>NODO no asigna prioridad con datos insuficientes o limitados por nubes.</span></div>}</article>
+      <article className="earthFieldPlan"><div className="earthSectionTitle"><div><small>RECORRIDA DIRIGIDA</small><h3>Prioridad con evidencia</h3></div><Sparkles/></div>{priorityParcel&&priorityMetric?<><div className="fieldPriority"><small>VERIFICAR PRIMERO</small><b>{priorityParcel.name}</b><strong>{priorityMetric.mean_value.toFixed(3)}</strong></div><p>Es el menor valor relativo entre los lotes comparables de esta misma escena. Revisá el área en campo antes de decidir una intervención.</p><ul><li>Comparar cultivo, estado fenológico y manejo.</li><li>Tomar observaciones georreferenciadas.</li><li>Contrastar con sensor de suelo y clima cuando estén disponibles.</li></ul>{onPlanScout&&<button className="earthScoutAction" onClick={()=>onPlanScout({parcelId:priorityParcel.id,metricId:priorityMetric.id,indexName:analysisIndex,meanValue:priorityMetric.mean_value})}><ScanSearch/>Planificar en NODO Scout</button>}</>:<div className="earthEmpty compact"><ScanSearch/><b>Se necesitan al menos dos lotes aptos</b><span>NODO no asigna prioridad con datos insuficientes o limitados por nubes.</span></div>}</article>
     </div>}
 
     <div className="earthBoundary"><ShieldAlert/><p><b>Límite agronómico:</b> NDVI y NDMI son proxies espectrales sin máscara de nubes por píxel en esta versión. No identifican por sí solos enfermedad, estrés, necesidad de riego ni rendimiento. Toda intervención requiere validación profesional y en campo.</p></div>

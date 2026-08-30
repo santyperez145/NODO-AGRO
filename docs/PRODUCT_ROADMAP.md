@@ -10,6 +10,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 
 - Identidad real email/contraseña y Google, multiempresa y RLS.
 - NODO Earth con color real Sentinel-2, NDVI/NDMI por píxel, estadísticas auditables por lote y recorrido sugerido conservador.
+- NODO Scout con planificación desde Earth o manual, estados auditables y hallazgos georreferenciados opcionales.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
 - Rodeo event-sourced, maquinaria por horómetro y libro económico append-only.
@@ -24,7 +25,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Elegir una zona y tres establecimientos con acceso semanal al decisor.
 - Levantar inventario real, conectividad, una estación, cuatro sondas, RFID/balanza existente y telemetría básica de dos máquinas.
-- Pilotear las órdenes de trabajo de NODO Flota ya implementadas; agregar evidencia por foto/audio y operación PWA offline.
+- Pilotear NODO Flota y NODO Scout ya implementados; agregar evidencia multimedia privada, responsables de equipo y operación PWA offline.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.
 
