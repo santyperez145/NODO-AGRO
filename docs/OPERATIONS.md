@@ -5,7 +5,7 @@
 - Proyecto: `NODO-AGRO`
 - Referencia: `kbhvgbczerfgdmfpugxr`
 - Región: São Paulo (`sa-east-1`)
-- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`, `20260829200000`, `20260829201000`, `20260829202000`, `20260829210000`, `20260829220000`, `20260830090000`, `20260830091000`, `20260830092000`, `20260830100000`, `20260830110000`, `20260830110100`
+- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`, `20260829200000`, `20260829201000`, `20260829202000`, `20260829210000`, `20260829220000`, `20260830090000`, `20260830091000`, `20260830092000`, `20260830100000`, `20260830110000`, `20260830110100`, `20260830130000`, `20260830130100`, `20260830150000`, `20260830150100`
 - Edge Functions con JWT de usuario: `sync-intelligence`, `satellite-analytics`, `agro-intelligence` y `scouting-evidence`. Funciones con token independiente de dispositivo: `ingest-telemetry` y `device-control`.
 
 Comandos reproducibles:
@@ -64,7 +64,8 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - Validación visual de Scout: una sesión `owner` abrió la vista vacía real, el formulario manual y el flujo Earth → Scout. NDVI `0,100` del lote Bajo precompletó lote, evidencia, objetivo y prioridad sin insertar una recorrida de prueba. La consola permaneció sin errores ni advertencias.
 - Scout Field: bucket privado, metadata append-only, hash server-side, enlaces firmados y función `scouting-evidence` desplegados. `OPTIONS` respondió 200 y una carga sin sesión fue rechazada con 401. La sesión owner mostró `0 observaciones · 0 fotos` sin insertar evidencia ficticia.
 - Scout Team: directorio tenant-scoped, creación con responsable, reasignación auditable y autorización por responsable desplegados. La sesión `owner` recibió desde la RPC al miembro real `Santy Perez · Propietario`; las agendas `Todas`, `Mías` y `Sin responsable` y el formulario responsive se validaron sin insertar recorridas ficticias. Una recarga posterior no reprodujo avisos ni errores de consola.
-- OAuth y PWA: Google usa PKCE y el callback se sanea después de recuperar la sesión. El build genera manifest, registro y service worker con 23 recursos estáticos; no existe runtime cache para Supabase ni imágenes privadas.
+- OAuth y PWA: Google usa PKCE y el callback se sanea después de recuperar la sesión. El build genera manifest, registro y service worker con 27 recursos estáticos; no existe runtime cache para Supabase ni imágenes privadas.
+- NODO Field Offline: la sesión `owner` activó una bóveda temporal, derivó la clave en el navegador, bloqueó, rechazó una frase incorrecta, desbloqueó y restableció el perfil sin insertar hallazgos ni modificar Supabase. La interfaz vacía se validó en escritorio y 390×844; la bóveda temporal quedó eliminada, el establecimiento conserva cero recorridas y la consola no registró errores. La prueba de sincronización end-to-end queda pendiente de una recorrida real en curso durante el piloto.
 - Estabilidad cartográfica: se desactivó la transición de zoom al encuadrar o desmontar mapas. La navegación rápida Centro de mando → Recorridas se reprodujo con cero errores y cero advertencias de consola.
 - Esri World Imagery: teselas satelitales y capa de etiquetas verificadas en el establecimiento real, con atribución visible.
 - Editor parcelario: carga diferida, trazado de vértices y cálculo de superficie verificados sin guardar datos de prueba.

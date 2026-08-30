@@ -7,6 +7,8 @@ Actualizado: 2026-08-30. NODO Scout organiza verificación en campo; no reemplaz
 1. **Planificar y asignar:** seleccionar lote, responsable, objetivo, prioridad y horario. Si nace desde NODO Earth, la recorrida conserva un snapshot de índice, valor, calidad, escena y algoritmo.
 2. **Iniciar:** una recorrida debe quedar `in_progress` antes de aceptar observaciones.
 3. **Observar:** registrar categoría, severidad, momento, descripción y ubicación opcional con precisión declarada por el dispositivo. Una visita en curso también puede adjuntar fotografías al hallazgo.
+   - Con conexión, se persiste inmediatamente mediante una RPC autorizada.
+   - Sin conexión, el hallazgo estructurado puede guardarse únicamente si la bóveda local fue activada y está desbloqueada. Se sincroniza de forma explícita al recuperar red.
 4. **Contrastar:** revisar cultivo, fenología, manejo, clima, sensor y antecedentes. Un color o hallazgo aislado no demuestra causalidad.
 5. **Cerrar:** documentar resultado, decisión o motivo de cancelación. La bitácora y los hallazgos permanecen inmutables.
 
@@ -44,7 +46,10 @@ La ubicación es opcional. Cuando se captura, NODO almacena latitud, longitud y 
 
 ## Limitaciones de esta versión
 
-- Requiere conectividad al guardar. Ante HTTP 408/425/429 o fallos 5xx, la interfaz reintenta hasta tres veces con el mismo identificador idempotente. La PWA mantiene el shell disponible, pero no persiste fotos, tokens, coordenadas u operaciones en una cola local insegura; el vault offline cifrado y la carga reanudable siguen como gate de campo.
+- Los hallazgos estructurados pueden guardarse sin señal dentro de NODO Field Offline. Notas, coordenadas, visita y UUID quedan autenticados y cifrados; la clave derivada permanece sólo en memoria y se bloquea tras 15 minutos de inactividad o al cerrar sesión.
+- La sincronización es manual y secuencial. El servidor vuelve a comprobar organización, rol, asignación y que la visita continúe en curso. Un rechazo queda visible y el borrador no se elimina. El mismo UUID evita duplicados ante respuestas perdidas.
+- Las fotografías todavía requieren conexión. Ante HTTP 408/425/429 o fallos 5xx, su carga reintenta hasta tres veces con el mismo identificador idempotente, pero no se copia el archivo a IndexedDB ni al service worker.
+- Perder la frase de protección hace irrecuperables los borradores locales. Restablecer la bóveda los elimina sólo después de confirmación explícita. El cifrado no compensa un dispositivo comprometido mientras está desbloqueado.
 - La versión actual valida firma binaria y tamaño, pero todavía no ejecuta análisis antimalware ni moderación visual.
 - No verifica que el punto esté dentro del polígono ni sustituye instrumentos calibrados.
 - Una recorrida satelital usa el snapshot histórico aunque el índice se recalcule después, preservando reproducibilidad.

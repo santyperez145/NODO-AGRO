@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AlertCircle, Eye, EyeOff, LoaderCircle, LockKeyhole } from 'lucide-react';
 import { authRedirectUrl, isAuthConfigured, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
+import { lockOfflineVault } from '../lib/offlineVault';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -22,6 +23,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next); setLoading(false);
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') scrubAuthCallbackUrl();
+      if (event === 'SIGNED_OUT') lockOfflineVault('session_changed');
     });
     return () => data.subscription.unsubscribe();
   }, []);

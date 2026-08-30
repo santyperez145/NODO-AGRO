@@ -4,6 +4,7 @@ import { AuthGate } from './auth/AuthGate';
 import { Onboarding } from './Onboarding';
 import { supabase } from './lib/supabase';
 import { parseGeoJsonPolygon } from './lib/geojson';
+import { lockOfflineVault } from './lib/offlineVault';
 import { useAgroWeather } from './lib/weather';
 import { deviceConnectionState, useRecommendationAction, useSyncIntelligence, useWorkspace, type Recommendation, type Workspace } from './lib/workspace';
 import type { ScoutSeed } from './ScoutPanel';
@@ -54,7 +55,7 @@ function Dashboard({data,onOrganizationChange}: {data: Workspace;onOrganizationC
     <div className="farm"><small>ESTABLECIMIENTO</small><b>{establishment.name}</b><span>{establishment.area_hectares?.toLocaleString('es-AR') ?? '—'} ha</span>{data.organizations.length>1?<select aria-label="Empresa activa" value={data.organization!.id} onChange={event=>onOrganizationChange(event.target.value)}>{data.organizations.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>:<em>{data.organization!.name}</em>}</div>
     <nav>{visibleSections.map(([Icon,name])=><button aria-label={name} className={active===name?'active':''} onClick={()=>setActive(name)} key={name}><Icon/><span>{name}</span></button>)}</nav>
     <div className="network"><Wifi/><div><b>{online?'Red NODO · Conectada':'Red NODO · Sin telemetría'}</b><small>{online} en línea · {data.devices.length} dispositivos</small></div></div>
-    <button className="logout" onClick={()=>void supabase?.auth.signOut({scope:'local'})}><LogOut/> Cerrar sesión</button>
+    <button className="logout" onClick={()=>{lockOfflineVault('session_changed');void supabase?.auth.signOut({scope:'local'})}}><LogOut/> Cerrar sesión</button>
   </aside><main>
     <header><div><p>{new Intl.DateTimeFormat('es-AR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()).toUpperCase()} · DATOS TRAZABLES</p><h1>{active}</h1><span>{establishment.latitude.toFixed(4)}, {establishment.longitude.toFixed(4)} · Rol {data.organization!.role}</span></div><div className="actions"><button className="syncButton" disabled={sync.isPending} onClick={()=>sync.mutate(establishment.id)}>{sync.isPending?<LoaderCircle className="spin"/>:<RefreshCw/>} Sincronizar fuentes</button></div></header>
     <ConnectivityBanner/>
@@ -67,7 +68,7 @@ function Dashboard({data,onOrganizationChange}: {data: Workspace;onOrganizationC
 function ConnectivityBanner(){
   const [online,setOnline]=useState(()=>navigator.onLine);
   useEffect(()=>{const connected=()=>setOnline(true);const disconnected=()=>setOnline(false);window.addEventListener('online',connected);window.addEventListener('offline',disconnected);return()=>{window.removeEventListener('online',connected);window.removeEventListener('offline',disconnected)}},[]);
-  return online?null:<div className="offlineBanner"><WifiOff/><div><b>Sin conexión · modo de consulta local</b><span>El shell permanece disponible, pero NODO no guarda fotos, coordenadas ni operaciones en una cola insegura. Reconectá para sincronizar.</span></div></div>;
+  return online?null:<div className="offlineBanner"><WifiOff/><div><b>Sin conexión · NODO Field Offline</b><span>El shell y los hallazgos cifrados de Scout siguen disponibles si desbloqueaste la bóveda. Fotos y otras operaciones esperan conexión.</span></div></div>;
 }
 
 type WeatherValue={observed_at:string;temperature_c:number;humidity_pct:number;precipitation_mm:number;wind_kmh:number;forecast_rain_7d_mm:number;source:string};

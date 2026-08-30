@@ -11,7 +11,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - Identidad real email/contraseña y Google, multiempresa y RLS.
 - NODO Earth con color real Sentinel-2, NDVI/NDMI por píxel, estadísticas auditables por lote y recorrido sugerido conservador.
 - NODO Scout con planificación desde Earth o manual, responsables configurables, reasignación y estados auditables, autorización por responsable, hallazgos georreferenciados y fotografía privada con hash server-side.
-- PWA instalable con shell offline y exclusión explícita de APIs, tokens, coordenadas y multimedia privada del caché.
+- NODO Field Offline v1 con shell instalable, bóveda AES-GCM por usuario, bloqueo automático, hallazgos cifrados e idempotencia al sincronizar; APIs, tokens y multimedia privada quedan fuera del caché.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
 - Rodeo event-sourced, maquinaria por horómetro y libro económico append-only.
@@ -28,7 +28,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Elegir una zona y tres establecimientos con acceso semanal al decisor.
 - Levantar inventario real, conectividad, una estación, cuatro sondas, RFID/balanza existente y telemetría básica de dos máquinas.
-- Pilotear NODO Flota, NODO Scout y NODO Teams ya implementados; agregar vault offline cifrado, carga multimedia reanudable y análisis antimalware.
+- Pilotear NODO Flota, NODO Scout, NODO Teams y la bóveda offline ya implementados; medir cuota/evicción y pérdida de frase en dispositivos de campo, y agregar carga multimedia cifrada reanudable con análisis antimalware.
 - Configurar dominio, SMTP transaccional y entregabilidad; ensayar invitación, aceptación, revocación y offboarding con dos cuentas reales antes de incorporar personal del piloto.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.
@@ -40,7 +40,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Flujo completo de orden preventiva/correctiva, repuestos, responsables, costo y cierre.
 - Gateway offline-first con cola local, OTA firmada y observabilidad de conectividad.
-- Evolucionar el procesamiento por polígono ya operativo: máscara SCL, series temporales, baseline fenológico, recorridas offline y evaluación con agrónomo.
+- Evolucionar el procesamiento por polígono ya operativo: máscara SCL, series temporales, baseline fenológico, sincronización offline supervisada de recorridas completas y evaluación con agrónomo.
 - Incorporar NODO Terrain 3D sólo con DEM licenciado, resolución y precisión vertical declaradas; luego evaluar escurrimiento y transitabilidad con evidencia de campo.
 - Importadores CSV y conectores iniciales para sistemas de balanza/RFID y maquinaria autorizados.
 - Experimentos A/B de recomendaciones y registro de resultado para aprender qué funciona por contexto, sin mezclar datos privados.

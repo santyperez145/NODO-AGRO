@@ -479,11 +479,11 @@ export function useTransitionScoutingVisit(){
 export function useRecordScoutingFinding(){
   const queryClient=useQueryClient();
   return useMutation({
-    mutationFn:async(input:{visitId:string;category:ScoutingFinding['category'];severity:ScoutingFinding['severity'];observedAt:string;latitude:number|null;longitude:number|null;accuracyM:number|null;notes:string})=>{
+    mutationFn:async(input:{visitId:string;category:ScoutingFinding['category'];severity:ScoutingFinding['severity'];observedAt:string;latitude:number|null;longitude:number|null;accuracyM:number|null;notes:string;requestId?:string})=>{
       const client=await requireClient();
       const {data,error}=await client.rpc('record_scouting_finding',{
         target_visit:input.visitId,finding_category:input.category,finding_severity:input.severity,finding_observed_at:input.observedAt,
-        finding_latitude:input.latitude,finding_longitude:input.longitude,finding_accuracy_m:input.accuracyM,finding_notes:input.notes.trim(),request_id:crypto.randomUUID(),
+        finding_latitude:input.latitude,finding_longitude:input.longitude,finding_accuracy_m:input.accuracyM,finding_notes:input.notes.trim(),request_id:input.requestId??crypto.randomUUID(),
       });
       if(error)throw error;return entityIdSchema.parse(data);
     },
