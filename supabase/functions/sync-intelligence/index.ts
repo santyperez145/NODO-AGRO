@@ -100,7 +100,7 @@ Deno.serve(async (request) => {
             captured_at: scene.properties.datetime, cloud_cover_pct: scene.properties['eo:cloud_cover'] ?? null,
             catalog_url: scene.links?.find((link: { rel?: string }) => link.rel === 'self')?.href ?? null,
             metadata: { platform: scene.properties.platform, constellation: scene.properties.constellation },
-          }, { onConflict: 'provider,external_id' });
+          }, { onConflict: 'establishment_id,provider,external_id' });
         }
       }
     } catch (satelliteError) {

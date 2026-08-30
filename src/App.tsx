@@ -15,6 +15,7 @@ const LivestockPanel = lazy(() => import('./OperationsPanels').then(module => ({
 const MachineryPanel = lazy(() => import('./OperationsPanels').then(module => ({ default:module.MachineryPanel })));
 const EconomyPanel = lazy(() => import('./OperationsPanels').then(module => ({ default:module.EconomyPanel })));
 const IntelligenceBrief = lazy(() => import('./IntelligenceBrief').then(module => ({ default:module.IntelligenceBrief })));
+const SatelliteIntelligencePanel = lazy(() => import('./SatelliteIntelligence').then(module => ({ default:module.SatelliteIntelligencePanel })));
 
 function WorkspaceShell() {
   const workspace = useWorkspace();
@@ -77,9 +78,7 @@ function CultivosPanel({data}:{data:Workspace}){
 }
 
 function MapPanel({data}:{data:Workspace}){
-  const establishment=data.establishment!;
-  const boundedParcels=data.parcels.filter(parcel=>parseGeoJsonPolygon(parcel.boundary_geojson));
-  return <section className="liveMapModule"><div className="moduleToolbar"><div><small>MAPA VIVO</small><h2>{establishment.name}</h2><p>Base visual satelital con límites productivos persistidos y trazables.</p></div></div><article className="liveMapCard"><Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando mapa satelital…</div>}><SatelliteFarmMap position={{latitude:establishment.latitude,longitude:establishment.longitude}} name={establishment.name} parcels={data.parcels} showParcelLabels/></Suspense><div className="liveMapFacts"><div><small>ESCENA ANALÍTICA</small><b>{data.satellite?new Date(data.satellite.captured_at).toLocaleDateString('es-AR'):'Sin sincronizar'}</b><span>{data.satellite?`${data.satellite.collection} · ${data.satellite.cloud_cover_pct?.toFixed(0)??'—'}% nubes`:'Ejecutá Sincronizar fuentes'}</span></div><div><small>LOTES DELIMITADOS</small><b>{boundedParcels.length}/{data.parcels.length}</b><span>{boundedParcels.reduce((sum,parcel)=>sum+parcel.area_hectares,0).toFixed(2)} ha con límite digital</span></div><div><small>TELEMETRÍA</small><b>{data.devices.filter(device=>deviceConnectionState(device)==='online').length}/{data.devices.length}</b><span>dispositivos en línea</span></div></div></article></section>;
+  return <Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando NODO Earth…</div>}><SatelliteIntelligencePanel data={data}/></Suspense>;
 }
 
 export function App(){ return <AuthGate><WorkspaceShell/></AuthGate> }

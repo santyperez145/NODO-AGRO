@@ -10,7 +10,10 @@ export type SensorReading = { id: number; device_id: string; observed_at: string
 export type DeviceTwin = { device_id:string; desired_state:Record<string,unknown>; desired_version:number; desired_updated_at:string|null; reported_state:Record<string,unknown>; reported_version:number; reported_updated_at:string|null };
 export type DeviceCommand = { id:string; device_id:string; command_type:'request_status'|'set_reporting_interval'|'restart_agent'; payload:Record<string,unknown>; status:'queued'|'delivered'|'succeeded'|'failed'|'expired'|'cancelled'; created_at:string; expires_at:string; delivered_at:string|null; acknowledged_at:string|null; delivery_attempts:number; result:Record<string,unknown>|null };
 export type WeatherObservation = { observed_at: string; temperature_c: number; humidity_pct: number; precipitation_mm: number; wind_kmh: number; forecast_rain_7d_mm: number; source: string };
-export type SatelliteScene = { captured_at: string; cloud_cover_pct: number | null; provider: string; collection: string; catalog_url: string | null };
+export type SatelliteScene = { id:string; external_id:string; captured_at: string; cloud_cover_pct: number | null; provider: string; collection: string; catalog_url: string | null };
+export type SatelliteIndexName = 'ndvi'|'ndmi';
+export type ParcelSatelliteMetric = { id:string; parcel_id:string; satellite_scene_id:string; analysis_run_id:string; index_name:SatelliteIndexName; captured_at:string; cloud_cover_pct:number|null; mean_value:number; min_value:number; max_value:number; stddev_value:number; percentile_02:number|null; percentile_98:number|null; valid_percent:number; pixel_count:number; quality_status:'usable'|'cloud_limited'|'insufficient_pixels'; source_provider:string; algorithm_version:string; computed_at:string };
+export type SatelliteAnalysisRun = { id:string; satellite_scene_id:string; index_name:SatelliteIndexName; status:'running'|'completed'|'partial'|'failed'; parcel_count:number; succeeded_count:number; failed_count:number; error_code:string|null; started_at:string; completed_at:string|null };
 export type Recommendation = { id: string; title: string; rationale: string; action: string; priority: 'critical'|'high'|'medium'|'low'; status: 'open'|'accepted'|'dismissed'|'completed'; confidence: number; evidence: unknown[]; valid_until: string | null; generated_at: string };
 export type LivestockGroup = { id:string; parcel_id:string|null; name:string; species:'cattle'|'sheep'|'goat'|'horse'|'other'; category:string; head_count:number; average_weight_kg:number|null; status:'active'|'closed'; last_observed_at:string; notes:string|null };
 export type LivestockEvent = { id:string; group_id:string; event_type:'initial_stock'|'birth'|'purchase'|'sale'|'mortality'|'transfer_in'|'transfer_out'|'adjustment'|'weighing'; occurred_at:string; head_delta:number; resulting_head_count:number; average_weight_kg:number|null; reason:string|null; created_at:string };
@@ -34,6 +37,8 @@ export type Workspace = {
   deviceCommands: DeviceCommand[];
   weather: WeatherObservation | null;
   satellite: SatelliteScene | null;
+  satelliteMetrics: ParcelSatelliteMetric[];
+  satelliteAnalysisRuns: SatelliteAnalysisRun[];
   recommendations: Recommendation[];
   livestockGroups: LivestockGroup[];
   livestockEvents: LivestockEvent[];
@@ -47,7 +52,7 @@ export type Workspace = {
 };
 
 function emptyOperation() {
-  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
+  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
 }
 
 async function requireClient() {
@@ -72,14 +77,16 @@ export function useWorkspace() {
       if (establishmentError) throw establishmentError;
       const establishment = (establishments?.[0] as Establishment | undefined) ?? null;
       if (!establishment) return { organization, establishment:null, ...emptyOperation() };
-      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
+      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
         client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score,boundary_geojson').eq('establishment_id', establishment.id).order('name'),
         client.from('devices').select('id,external_id,display_name,kind,status,last_seen_at,parcel_id,expected_interval_minutes,installed_at').eq('establishment_id', establishment.id).order('display_name'),
         client.from('latest_sensor_readings').select('id,device_id,observed_at,metric,value,unit,quality,ingested_at').eq('establishment_id', establishment.id).order('observed_at', { ascending: false }).limit(500),
         client.from('device_twins').select('device_id,desired_state,desired_version,desired_updated_at,reported_state,reported_version,reported_updated_at').eq('organization_id', organization.id),
         client.from('device_commands').select('id,device_id,command_type,payload,status,created_at,expires_at,delivered_at,acknowledged_at,delivery_attempts,result').eq('establishment_id', establishment.id).order('created_at', { ascending: false }).limit(100),
         client.from('weather_observations').select('observed_at,temperature_c,humidity_pct,precipitation_mm,wind_kmh,forecast_rain_7d_mm,source').eq('establishment_id', establishment.id).order('observed_at', { ascending: false }).limit(1).maybeSingle(),
-        client.from('satellite_scenes').select('captured_at,cloud_cover_pct,provider,collection,catalog_url').eq('establishment_id', establishment.id).order('captured_at', { ascending: false }).limit(1).maybeSingle(),
+        client.from('satellite_scenes').select('id,external_id,captured_at,cloud_cover_pct,provider,collection,catalog_url').eq('establishment_id', establishment.id).order('captured_at', { ascending: false }).limit(1).maybeSingle(),
+        client.from('parcel_satellite_metrics').select('id,parcel_id,satellite_scene_id,analysis_run_id,index_name,captured_at,cloud_cover_pct,mean_value,min_value,max_value,stddev_value,percentile_02,percentile_98,valid_percent,pixel_count,quality_status,source_provider,algorithm_version,computed_at').eq('establishment_id', establishment.id).order('captured_at',{ascending:false}).limit(500),
+        client.from('satellite_analysis_runs').select('id,satellite_scene_id,index_name,status,parcel_count,succeeded_count,failed_count,error_code,started_at,completed_at').eq('establishment_id', establishment.id).order('started_at',{ascending:false}).limit(20),
         client.from('recommendations').select('id,title,rationale,action,priority,status,confidence,evidence,valid_until,generated_at').eq('establishment_id', establishment.id).eq('status', 'open').order('generated_at', { ascending: false }).limit(8),
         client.from('livestock_groups').select('id,parcel_id,name,species,category,head_count,average_weight_kg,status,last_observed_at,notes').eq('establishment_id',establishment.id).order('status').order('name'),
         client.from('livestock_events').select('id,group_id,event_type,occurred_at,head_delta,resulting_head_count,average_weight_kg,reason,created_at').eq('establishment_id',establishment.id).order('occurred_at',{ascending:false}).limit(100),
@@ -91,8 +98,8 @@ export function useWorkspace() {
         client.from('operational_summary').select('*').eq('establishment_id',establishment.id).maybeSingle(),
         client.from('latest_ai_analysis').select('id,organization_id,establishment_id,analysis_type,question,prompt_version,result,created_at,completed_at,expires_at').eq('establishment_id',establishment.id).maybeSingle(),
       ]);
-      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
-      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
+      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
+      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
     },
   });
 }
@@ -179,6 +186,28 @@ export function useSyncIntelligence() {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspace'] }),
+  });
+}
+
+const satelliteAnalysisResponseSchema=z.object({
+  run_id:z.string().uuid(),status:z.enum(['completed','partial','failed']),index_name:z.enum(['ndvi','ndmi']),
+  succeeded_count:z.number().int().nonnegative(),failed_count:z.number().int().nonnegative(),
+  failures:z.array(z.object({parcel_id:z.string().uuid(),code:z.string()})),
+  scene:z.object({id:z.string().uuid(),external_id:z.string(),captured_at:z.string(),cloud_cover_pct:z.number().nullable(),resolution_meters:z.number().positive()}),
+  limitations:z.array(z.string()),
+});
+
+export function useComputeSatelliteAnalytics(){
+  const queryClient=useQueryClient();
+  return useMutation({
+    mutationFn:async(input:{establishmentId:string;indexName:SatelliteIndexName})=>{
+      const client=await requireClient();
+      const {data,error}=await client.functions.invoke('satellite-analytics',{body:{establishment_id:input.establishmentId,index_name:input.indexName}});
+      if(error)throw new Error(await functionErrorMessage(error));
+      if(data?.error)throw new Error(String(data.error));
+      return satelliteAnalysisResponseSchema.parse(data);
+    },
+    onSuccess:()=>queryClient.invalidateQueries({queryKey:['workspace']}),
   });
 }
 

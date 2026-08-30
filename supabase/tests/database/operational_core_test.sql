@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(50);
 
 select has_table('public','livestock_groups','livestock groups table exists');
 select has_table('public','livestock_events','append-only livestock events table exists');
@@ -14,6 +14,8 @@ select has_table('public','ai_analysis_feedback','intelligence feedback table ex
 select has_view('public','latest_ai_analysis','latest intelligence view exists');
 select has_table('public','maintenance_work_orders','fleet work orders table exists');
 select has_table('public','maintenance_work_order_events','append-only work order history exists');
+select has_table('public','satellite_analysis_runs','auditable satellite runs table exists');
+select has_table('public','parcel_satellite_metrics','parcel spectral metrics table exists');
 
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='livestock_groups'),true,'livestock groups has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='livestock_events'),true,'livestock events has RLS enabled');
@@ -25,6 +27,8 @@ select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='ai_analysis_feedback'),true,'intelligence feedback has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='maintenance_work_orders'),true,'fleet work orders have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='maintenance_work_order_events'),true,'work order events have RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='satellite_analysis_runs'),true,'satellite runs have RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='parcel_satellite_metrics'),true,'satellite metrics have RLS enabled');
 
 select is(has_table_privilege('authenticated','public.livestock_groups','INSERT'),false,'authenticated cannot bypass livestock RPC');
 select is(has_table_privilege('authenticated','public.machine_assets','UPDATE'),false,'authenticated cannot directly alter machine state');
@@ -37,6 +41,12 @@ select is(has_table_privilege('authenticated','public.ai_analysis_feedback','INS
 select is(has_table_privilege('authenticated','public.maintenance_work_orders','INSERT'),false,'browser cannot bypass work order RPC');
 select is(has_table_privilege('authenticated','public.maintenance_work_orders','UPDATE'),false,'browser cannot alter work order state directly');
 select is(has_table_privilege('authenticated','public.maintenance_work_order_events','INSERT'),false,'browser cannot forge work order history');
+select is(has_table_privilege('authenticated','public.satellite_analysis_runs','INSERT'),false,'browser cannot forge satellite runs');
+select is(has_table_privilege('authenticated','public.satellite_analysis_runs','UPDATE'),false,'browser cannot alter satellite runs');
+select is(has_table_privilege('authenticated','public.parcel_satellite_metrics','INSERT'),false,'browser cannot forge satellite metrics');
+select is(has_table_privilege('authenticated','public.parcel_satellite_metrics','UPDATE'),false,'browser cannot alter satellite metrics');
+select ok(has_table_privilege('authenticated','public.satellite_analysis_runs','SELECT'),'members can inspect satellite runs');
+select ok(has_table_privilege('authenticated','public.parcel_satellite_metrics','SELECT'),'members can inspect satellite metrics');
 
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='operational_summary'),'operational summary runs with invoker security');
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='latest_ai_analysis'),'latest intelligence view runs with invoker security');

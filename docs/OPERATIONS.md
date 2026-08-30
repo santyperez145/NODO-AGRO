@@ -5,8 +5,8 @@
 - Proyecto: `NODO-AGRO`
 - Referencia: `kbhvgbczerfgdmfpugxr`
 - Región: São Paulo (`sa-east-1`)
-- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`, `20260829200000`, `20260829201000`, `20260829202000`
-- Edge Functions: `sync-intelligence` y `agro-intelligence` (JWT de usuario), `ingest-telemetry` y `device-control` (token de dispositivo)
+- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`, `20260829200000`, `20260829201000`, `20260829202000`, `20260829210000`, `20260829220000`
+- Edge Functions con JWT de usuario: `sync-intelligence`, `satellite-analytics` y `agro-intelligence`. Funciones con token independiente de dispositivo: `ingest-telemetry` y `device-control`.
 
 Comandos reproducibles:
 
@@ -54,6 +54,9 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - `latest_sensor_readings` se consultó desde una sesión real con RLS, sin lecturas simuladas. La migración remota está alineada y `supabase db lint --linked --level warning` no reporta errores.
 - Plano de control: gemelos, cola durable, idempotencia, TTL, lease, reintentos, acuse y auditoría aplicados en PostgreSQL. `device-control` está desplegada sin JWT de usuario porque exige la credencial independiente del hardware.
 - Open-Meteo y Sentinel-2 STAC: respuestas reales verificadas desde el entorno de operación.
+- NODO Earth: `satellite-analytics` desplegada con autorización por rol, geometrías validadas, expresiones allowlisted, timeout, concurrencia acotada, ejecución auditable y métricas server-owned. La misma escena puede pertenecer a múltiples establecimientos sin romper aislamiento.
+- Análisis satelital real: la escena `S2C_MSIL2A_20260827T142711_R053_T19JFJ_20260827T192955`, capturada el 2026-08-27 con 8,7% de nubosidad global, produjo NDVI y NDMI persistidos para los tres polígonos existentes. Los resultados se mostraron con media, rango, dispersión, píxeles, resolución y límites; no se crearon lotes ni señales ficticias.
+- Validación visual de NODO Earth: color real, NDVI, NDMI, opacidad, leyendas, límites y etiquetas se verificaron en la sesión `owner`. El motor propuso revisar primero el lote con menor valor relativo sólo después de confirmar dos o más métricas comparables. Consola: cero errores y cero advertencias.
 - Esri World Imagery: teselas satelitales y capa de etiquetas verificadas en el establecimiento real, con atribución visible.
 - Editor parcelario: carga diferida, trazado de vértices y cálculo de superficie verificados sin guardar datos de prueba.
 - CSS de Leaflet se carga desde el componente satelital compartido. Se verificaron visualmente Centro de mando, Mapa vivo y Cultivos para evitar teselas sin recorte o desbordadas.

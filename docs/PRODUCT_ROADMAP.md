@@ -9,7 +9,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 ## Estado actual verificable
 
 - Identidad real email/contraseña y Google, multiempresa y RLS.
-- Gemelo parcelario sobre mapa satelital y escenas Sentinel-2 trazables.
+- NODO Earth con color real Sentinel-2, NDVI/NDMI por píxel, estadísticas auditables por lote y recorrido sugerido conservador.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
 - Rodeo event-sourced, maquinaria por horómetro y libro económico append-only.
@@ -34,7 +34,8 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Flujo completo de orden preventiva/correctiva, repuestos, responsables, costo y cierre.
 - Gateway offline-first con cola local, OTA firmada y observabilidad de conectividad.
-- Procesamiento satelital por polígono: máscaras de nube, índices y series temporales; no presentar índices sin pipeline reproducible.
+- Evolucionar el procesamiento por polígono ya operativo: máscara SCL, series temporales, baseline fenológico, recorridas offline y evaluación con agrónomo.
+- Incorporar NODO Terrain 3D sólo con DEM licenciado, resolución y precisión vertical declaradas; luego evaluar escurrimiento y transitabilidad con evidencia de campo.
 - Importadores CSV y conectores iniciales para sistemas de balanza/RFID y maquinaria autorizados.
 - Experimentos A/B de recomendaciones y registro de resultado para aprender qué funciona por contexto, sin mezclar datos privados.
 - Administración de organizaciones, invitaciones, permisos y facturación SaaS.
