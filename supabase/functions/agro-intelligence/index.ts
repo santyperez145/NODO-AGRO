@@ -183,7 +183,7 @@ Deno.serve(async request => {
     if (userRate.error || orgRate.error) throw userRate.error ?? orgRate.error;
     if ((userRate.count ?? 0) >= 6 || (orgRate.count ?? 0) >= 30) return json({ error: safeMessage(429), code: 'rate_limited' }, 429);
 
-    const [parcels, devices, readings, weather, satellite, recommendations, livestock, machinery, finances, operations] = await Promise.all([
+    const [parcels, devices, readings, weather, satellite, recommendations, livestock, machinery, workOrders, finances, operations] = await Promise.all([
       admin.from('land_parcels').select('name,use,crop,area_hectares,health_score').eq('establishment_id', establishmentId).order('name').limit(100),
       admin.from('devices').select('id,display_name,kind,status,last_seen_at,expected_interval_minutes').eq('establishment_id', establishmentId).order('display_name').limit(100),
       admin.from('latest_sensor_readings').select('device_id,observed_at,metric,value,unit,quality').eq('establishment_id', establishmentId).order('observed_at', { ascending: false }).limit(200),
@@ -192,10 +192,11 @@ Deno.serve(async request => {
       admin.from('recommendations').select('title,rationale,action,priority,confidence,evidence,valid_until,generated_at').eq('establishment_id', establishmentId).eq('status', 'open').order('generated_at', { ascending: false }).limit(20),
       admin.from('livestock_groups').select('name,species,category,head_count,average_weight_kg,status,last_observed_at').eq('establishment_id', establishmentId).order('last_observed_at', { ascending: false }).limit(100),
       admin.from('machine_assets').select('display_name,kind,current_hours,service_interval_hours,last_service_hours,status,updated_at').eq('establishment_id', establishmentId).order('updated_at', { ascending: false }).limit(100),
+      admin.from('maintenance_work_orders').select('work_type,title,priority,status,due_on,estimated_cost,actual_cost,currency,updated_at').eq('establishment_id', establishmentId).order('updated_at', { ascending: false }).limit(100),
       admin.from('financial_entries').select('direction,occurred_on,category,amount,currency').eq('establishment_id', establishmentId).order('occurred_on', { ascending: false }).limit(100),
       admin.from('operational_summary').select('*').eq('establishment_id', establishmentId).maybeSingle(),
     ]);
-    for (const query of [parcels, devices, readings, weather, satellite, recommendations, livestock, machinery, finances, operations]) if (query.error) throw query.error;
+    for (const query of [parcels, devices, readings, weather, satellite, recommendations, livestock, machinery, workOrders, finances, operations]) if (query.error) throw query.error;
 
     const deviceAliases = new Map((devices.data ?? []).map((device, index) => [device.id, `device_${index + 1}`]));
     const snapshot = {
@@ -209,7 +210,7 @@ Deno.serve(async request => {
       devices: (devices.data ?? []).map(({ id, ...device }) => ({ device_ref: deviceAliases.get(id), ...device })),
       latest_sensor_readings: (readings.data ?? []).map(({ device_id, ...reading }) => ({ device_ref: deviceAliases.get(device_id) ?? 'unknown_device', ...reading })),
       latest_weather: weather.data, latest_satellite_scene: satellite.data, open_rule_recommendations: recommendations.data ?? [],
-      livestock_groups: livestock.data ?? [], machine_assets: machinery.data ?? [], recent_financial_entries: finances.data ?? [],
+      livestock_groups: livestock.data ?? [], machine_assets: machinery.data ?? [], maintenance_work_orders: workOrders.data ?? [], recent_financial_entries: finances.data ?? [],
       operational_summary: operations.data,
       data_contract: { missing_values_are_null: true, money_is_not_accounting_profit: true, physical_actions_require_human_approval: true },
     };

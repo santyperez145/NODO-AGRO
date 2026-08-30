@@ -13,6 +13,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
 - Rodeo event-sourced, maquinaria por horómetro y libro económico append-only.
+- Órdenes de trabajo NODO Flota con estado, prioridad, vencimiento, responsable, costo y cierre auditable.
 - Parte Inteligente transversal con contexto server-side, auditoría, calidad de datos, límites de consumo y aprobación humana.
 
 Esto es un núcleo técnico de piloto, no product-market fit, validación agronómica, seguridad certificada ni operación comercial escalable.
@@ -23,7 +24,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Elegir una zona y tres establecimientos con acceso semanal al decisor.
 - Levantar inventario real, conectividad, una estación, cuatro sondas, RFID/balanza existente y telemetría básica de dos máquinas.
-- Completar órdenes de trabajo de NODO Flota, captura por audio/foto y operación PWA offline.
+- Pilotear las órdenes de trabajo de NODO Flota ya implementadas; agregar evidencia por foto/audio y operación PWA offline.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.
 
@@ -91,3 +92,4 @@ Las rondas no son hitos de producto ni están garantizadas. Son consecuencia de 
 - Sin prescripciones veterinarias o fitosanitarias automatizadas.
 - Sin entrenar con datos privados de un cliente para beneficiar a otro sin consentimiento explícito.
 - Sin afirmar ahorro, rendimiento o precisión antes de medirlo en campo.
+- Sin afirmar homologación, certificación, compatibilidad oficial o protección registral sin expediente y evidencia vigente; la matriz de salida está en `docs/LAUNCH_READINESS.md`.

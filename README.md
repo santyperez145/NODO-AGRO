@@ -24,9 +24,10 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - Cartografía operativa: imagen satelital Esri World Imagery con etiquetas, fallback cartográfico y delimitación de lotes sobre el terreno.
 - Rodeo: stock por grupos derivado de eventos inmutables de nacimiento, compra, venta, mortandad, traslados, ajustes y pesajes.
 - Maquinaria: inventario técnico, horómetros, utilización, reparaciones, inspecciones y vencimiento de service calculado en PostgreSQL.
+- NODO Flota: órdenes preventivas, correctivas y de inspección con máquina, prioridad, responsable, vencimiento, costo, máquina de estados y cierre auditable.
 - Economía: libro operativo append-only en la moneda base del establecimiento, referencias a lote/maquinaria y correcciones mediante contrapartidas trazables.
 - Gobierno de datos: mutaciones críticas encapsuladas en RPC transaccionales, RLS multiempresa, idempotencia y auditoría server-owned.
 
 La configuración necesaria y las dependencias externas están en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). La aplicación no utiliza credenciales, usuarios, establecimientos, métricas ni sesiones simuladas. Una cuenta nueva inicia un onboarding real antes de mostrar el tablero.
 
-El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md). El plan para convertir el producto en una compañía financiable está en [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md).
+El contrato para integrar hardware está en [`docs/IOT_GATEWAY.md`](docs/IOT_GATEWAY.md). El plan para convertir el producto en una compañía financiable está en [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md) y los gates regulatorios y de protección se gestionan en [`docs/LAUNCH_READINESS.md`](docs/LAUNCH_READINESS.md).
