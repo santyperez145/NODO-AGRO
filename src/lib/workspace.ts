@@ -157,6 +157,7 @@ export function deviceConnectionState(device:Device,now=Date.now()):DeviceConnec
 
 const provisionedDeviceSchema=z.object({device_id:z.string().uuid(),token:z.string().min(32)});
 const scoutingEvidenceResponseSchema=z.object({media_id:z.string().uuid(),finding_id:z.string().uuid(),sha256:z.string().regex(/^[0-9a-f]{64}$/).optional(),size_bytes:z.number().int().positive().optional(),mime_type:z.string().optional()});
+const scoutingEvidencePrepareSchema=z.object({status:z.enum(['prepared','uploaded_pending_finalize']),object_path:z.string().min(1),upload_token:z.string().min(1).optional(),tus_endpoint:z.string().url().optional()});
 
 async function scoutingEvidenceError(error:unknown){
   const context=(error as {context?:unknown})?.context;
@@ -173,6 +174,42 @@ function shouldRetryScoutingEvidence(error:unknown){
   const context=(error as {context?:unknown})?.context;
   if(!(context instanceof Response))return true;
   return [408,425,429,500,502,503,504].includes(context.status);
+}
+
+async function invokeScoutingEvidence(client:NonNullable<typeof supabase>,body:Record<string,unknown>){
+  for(let attempt=0;attempt<3;attempt++){
+    const result=await client.functions.invoke('scouting-evidence',{body});
+    if(!result.error)return result.data as unknown;
+    if(attempt===2||!shouldRetryScoutingEvidence(result.error))throw await scoutingEvidenceError(result.error);
+    await new Promise(resolve=>setTimeout(resolve,attempt===0?600:1600));
+  }
+  throw new Error('No se pudo contactar el servicio de evidencia');
+}
+
+async function sha256File(file:File){
+  const digest=await crypto.subtle.digest('SHA-256',await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest),value=>value.toString(16).padStart(2,'0')).join('');
+}
+
+async function resumableTusUpload(input:{file:File;requestId:string;endpoint:string;token:string;objectPath:string;resumeUrl?:string|null;onProgress?:(percentage:number)=>void;onUploadUrl?:(url:string|null)=>void|Promise<void>}){
+  const tus=await import('tus-js-client');
+  if(!tus.isSupported)throw new Error('Este navegador no soporta cargas reanudables TUS');
+  const attempt=(resumeUrl:string|null,fallbackAllowed:boolean)=>new Promise<void>((resolve,reject)=>{
+    const upload=new tus.Upload(input.file,{
+      endpoint:input.endpoint,uploadUrl:resumeUrl??undefined,headers:{'x-signature':input.token},retryDelays:[0,1_500,3_000,5_000,10_000],uploadDataDuringCreation:true,chunkSize:6*1024*1024,
+      storeFingerprintForResuming:false,metadata:{bucketName:'scouting-evidence',objectName:input.objectPath,contentType:input.file.type,cacheControl:'3600'},
+      onProgress:(uploaded,total)=>input.onProgress?.(total>0?Math.round(uploaded/total*100):0),
+      onAfterResponse:async(request,response)=>{if(request.getMethod()==='POST'){const location=response.getHeader('Location');if(location)await input.onUploadUrl?.(new URL(location,input.endpoint).toString())}},
+      onError:error=>{
+        const response=(error as {originalResponse?:{getStatus?:()=>number}}).originalResponse;const status=response?.getStatus?.()??0;
+        if(resumeUrl&&fallbackAllowed&&[401,403,404,410].includes(status)){void Promise.resolve().then(()=>input.onUploadUrl?.(null)).then(()=>attempt(null,false)).then(resolve,reject);return}
+        reject(new Error(`La carga reanudable se interrumpió: ${error.message}`));
+      },
+      onSuccess:()=>resolve(),
+    });
+    upload.start();
+  });
+  await attempt(input.resumeUrl??null,true);
 }
 
 export function useProvisionDevice() {
@@ -494,30 +531,26 @@ export function useRecordScoutingFinding(){
 export function useUploadScoutingEvidence(){
   const queryClient=useQueryClient();
   return useMutation({
-    mutationFn:async(input:{findingId:string;file:File;caption:string;capturedAt:string;captureSource:'camera'|'library'})=>{
+    mutationFn:async(input:{findingId:string;file:File;caption:string;capturedAt:string;captureSource:'camera'|'library';requestId?:string;sha256?:string;resumeUrl?:string|null;onProgress?:(percentage:number)=>void;onUploadUrl?:(url:string|null)=>void|Promise<void>})=>{
       const client=await requireClient();
       if(!['image/jpeg','image/png','image/webp'].includes(input.file.type))throw new Error('Usá una imagen JPEG, PNG o WebP');
       if(input.file.size<1||input.file.size>8*1024*1024)throw new Error('La imagen debe pesar hasta 8 MB');
-      if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Sin conexión. La foto sigue sólo en esta pantalla; reconectate y volvé a intentar.');
-      const requestId=crypto.randomUUID();
-      for(let attempt=0;attempt<3;attempt++){
-        const {data,error}=await client.functions.invoke('scouting-evidence',{
-          body:input.file,
-          headers:{
-            'Content-Type':input.file.type,
-            'x-finding-id':input.findingId,
-            'x-request-id':requestId,
-            'x-captured-at':input.capturedAt,
-            'x-capture-source':input.captureSource,
-            'x-caption':encodeURIComponent(input.caption.trim()),
-            'x-file-name':encodeURIComponent(input.file.name),
-          },
-        });
-        if(!error)return scoutingEvidenceResponseSchema.parse(data);
-        if(attempt===2||!shouldRetryScoutingEvidence(error))throw await scoutingEvidenceError(error);
-        await new Promise(resolve=>setTimeout(resolve,attempt===0?600:1600));
+      if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Sin conexión. Guardá la foto cifrada en la bóveda para sincronizarla después.');
+      const requestId=input.requestId??crypto.randomUUID();
+      const sha256=await sha256File(input.file);
+      if(input.sha256&&input.sha256!==sha256)throw new Error('La foto no coincide con el hash guardado en la bóveda');
+      const metadata={finding_id:input.findingId,request_id:requestId,mime_type:input.file.type,size_bytes:input.file.size,sha256,captured_at:input.capturedAt,capture_source:input.captureSource,caption:input.caption.trim(),file_name:input.file.name};
+      const preparedRaw=await invokeScoutingEvidence(client,{action:'prepare_resumable',...metadata});
+      const completed=scoutingEvidenceResponseSchema.safeParse(preparedRaw);
+      if(completed.success)return completed.data;
+      const prepared=scoutingEvidencePrepareSchema.parse(preparedRaw);
+      if(prepared.status==='prepared'){
+        if(!prepared.upload_token||!prepared.tus_endpoint)throw new Error('El servicio no entregó un contrato TUS completo');
+        await resumableTusUpload({file:input.file,requestId,endpoint:prepared.tus_endpoint,token:prepared.upload_token,objectPath:prepared.object_path,resumeUrl:input.resumeUrl,onProgress:input.onProgress,onUploadUrl:input.onUploadUrl});
       }
-      throw new Error('No se pudo guardar la evidencia');
+      input.onProgress?.(100);
+      const finalized=await invokeScoutingEvidence(client,{action:'finalize_resumable',object_path:prepared.object_path,...metadata});
+      return scoutingEvidenceResponseSchema.parse(finalized);
     },
     onSuccess:()=>invalidateWorkspace(queryClient),
   });

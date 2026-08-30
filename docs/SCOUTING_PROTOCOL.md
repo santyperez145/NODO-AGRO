@@ -8,7 +8,7 @@ Actualizado: 2026-08-30. NODO Scout organiza verificación en campo; no reemplaz
 2. **Iniciar:** una recorrida debe quedar `in_progress` antes de aceptar observaciones.
 3. **Observar:** registrar categoría, severidad, momento, descripción y ubicación opcional con precisión declarada por el dispositivo. Una visita en curso también puede adjuntar fotografías al hallazgo.
    - Con conexión, se persiste inmediatamente mediante una RPC autorizada.
-   - Sin conexión, el hallazgo estructurado puede guardarse únicamente si la bóveda local fue activada y está desbloqueada. Se sincroniza de forma explícita al recuperar red.
+   - Sin conexión, el hallazgo estructurado y sus fotografías pueden guardarse únicamente si la bóveda local fue activada y está desbloqueada. Se sincronizan de forma explícita al recuperar red.
 4. **Contrastar:** revisar cultivo, fenología, manejo, clima, sensor y antecedentes. Un color o hallazgo aislado no demuestra causalidad.
 5. **Cerrar:** documentar resultado, decisión o motivo de cancelación. La bitácora y los hallazgos permanecen inmutables.
 
@@ -39,16 +39,16 @@ La ubicación es opcional. Cuando se captura, NODO almacena latitud, longitud y 
 ## Evidencia fotográfica privada
 
 - La carga acepta JPEG, PNG o WebP de hasta 8 MB y verifica tanto MIME como firma binaria.
-- El navegador no escribe directamente en Storage. `scouting-evidence` autentica la sesión y el rol, exige una visita en curso, calcula SHA‑256 en servidor y registra metadatos y auditoría.
+- El navegador no registra metadatos directamente en Storage. `scouting-evidence` autentica sesión, rol y visita, prepara una carga TUS firmada y al finalizar vuelve a descargar el objeto para verificar tamaño, firma binaria y SHA‑256 antes de registrar metadatos y auditoría.
 - El bucket `scouting-evidence` es privado. La interfaz emite enlaces firmados por cinco minutos solamente para integrantes de la organización.
 - Los metadatos son append-only: archivo original, tamaño, tipo, fuente cámara/archivo, captura, descripción, hash, autor y momento.
 - Firma y hash permiten detectar sustitución o corrupción; no equivalen a análisis antivirus, autenticidad visual, cadena de custodia pericial ni prueba de presencia física.
 
 ## Limitaciones de esta versión
 
-- Los hallazgos estructurados pueden guardarse sin señal dentro de NODO Field Offline. Notas, coordenadas, visita y UUID quedan autenticados y cifrados; la clave derivada permanece sólo en memoria y se bloquea tras 15 minutos de inactividad o al cerrar sesión.
-- La sincronización es manual y secuencial. El servidor vuelve a comprobar organización, rol, asignación y que la visita continúe en curso. Un rechazo queda visible y el borrador no se elimina. El mismo UUID evita duplicados ante respuestas perdidas.
-- Las fotografías todavía requieren conexión. Ante HTTP 408/425/429 o fallos 5xx, su carga reintenta hasta tres veces con el mismo identificador idempotente, pero no se copia el archivo a IndexedDB ni al service worker.
+- Hallazgos y fotografías pueden guardarse sin señal dentro de NODO Field Offline v2. Notas, coordenadas, visita, metadatos y bytes quedan autenticados y cifrados; la clave derivada permanece sólo en memoria y se bloquea tras 15 minutos de inactividad o al cerrar sesión.
+- La sincronización es manual y ordenada: primero hallazgos, luego fotos. El servidor vuelve a comprobar organización, rol, asignación y que la visita continúe en curso. Un rechazo queda visible y el pendiente no se elimina. El mismo UUID evita duplicados ante respuestas perdidas.
+- Las fotografías cifradas se reanudan por TUS en chunks de 6 MB. La URL de reanudación se conserva cifrada, nunca en `localStorage`; antes de transferir y al finalizar se vuelve a comprobar SHA‑256, firma y tamaño. Ningún binario privado entra al caché del service worker.
 - Perder la frase de protección hace irrecuperables los borradores locales. Restablecer la bóveda los elimina sólo después de confirmación explícita. El cifrado no compensa un dispositivo comprometido mientras está desbloqueado.
 - La versión actual valida firma binaria y tamaño, pero todavía no ejecuta análisis antimalware ni moderación visual.
 - No verifica que el punto esté dentro del polígono ni sustituye instrumentos calibrados.
