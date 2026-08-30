@@ -39,6 +39,7 @@ NODO es una plataforma de inteligencia operativa e integradora de hardware indus
 - Instalación relevada, fotos/serie/calibración y responsable registrados.
 - Plan de incidentes, soporte y retiro seguro del hardware.
 - Métricas de éxito y daño potencial acordadas antes de observar resultados.
+- Línea base bloqueada en Pilot Control antes de la primera intervención; claims económicos separados de métricas operativas y con revisión de otra identidad.
 
 ### Gate M1 — Venta comercial en Argentina
 
@@ -48,6 +49,7 @@ NODO es una plataforma de inteligencia operativa e integradora de hardware indus
 - Pentest independiente sin hallazgos críticos abiertos y restauración ensayada.
 - Seguro, soporte, garantías y proceso RMA contratados.
 - Tres pilotos activos, dos disposiciones de pago y dos casos de ROI documentados sin extrapolaciones engañosas.
+- Todo caso de ROI comercial debe además tener revisión contable/operativa externa; el estado interno `internally_verified` no alcanza para publicarlo como resultado validado.
 
 ### Gate E1 — Escala y exportación
 

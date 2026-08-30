@@ -18,6 +18,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - Órdenes de trabajo NODO Flota con estado, prioridad, vencimiento, responsable, costo y cierre auditable.
 - Parte Inteligente transversal con contexto server-side, auditoría, calidad de datos, límites de consumo y aprobación humana.
 - NODO Teams con directorio administrativo, invitaciones email-bound, roles, expiración, revocación, baja protegida, auditoría y navegación multiempresa.
+- NODO Pilot Control con hipótesis, línea base server-owned, capturas comparables, claims económicos documentados y revisión interna de dos identidades.
 
 Esto es un núcleo técnico de piloto, no product-market fit, validación agronómica, seguridad certificada ni operación comercial escalable.
 
@@ -31,6 +32,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 - Configurar dominio, SMTP transaccional y entregabilidad; ensayar invitación, aceptación, revocación y offboarding con dos cuentas reales antes de incorporar personal del piloto.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.
+- Iniciar cada piloto desde Pilot Control antes de intervenir, capturar evidencia semanal y registrar valor sólo contra documentación identificable.
 
 **Puerta:** tres cuentas activas semanalmente, dos dispuestas a pagar, menos de diez minutos de carga diaria y al menos dos resultados económicos verificables.
 
