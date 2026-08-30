@@ -15,7 +15,8 @@ export type SatelliteIndexName = 'ndvi'|'ndmi';
 export type ParcelSatelliteMetric = { id:string; parcel_id:string; satellite_scene_id:string; analysis_run_id:string; index_name:SatelliteIndexName; captured_at:string; cloud_cover_pct:number|null; mean_value:number; min_value:number; max_value:number; stddev_value:number; percentile_02:number|null; percentile_98:number|null; valid_percent:number; pixel_count:number; quality_status:'usable'|'cloud_limited'|'insufficient_pixels'; source_provider:string; algorithm_version:string; computed_at:string };
 export type SatelliteAnalysisRun = { id:string; satellite_scene_id:string; index_name:SatelliteIndexName; status:'running'|'completed'|'partial'|'failed'; parcel_count:number; succeeded_count:number; failed_count:number; error_code:string|null; started_at:string; completed_at:string|null };
 export type ScoutingVisit = { id:string; parcel_id:string; source_type:'manual'|'satellite_ndvi'|'satellite_ndmi'|'weather'|'iot'; source_metric_id:string|null; source_snapshot:Record<string,unknown>; title:string; objective:string|null; priority:'low'|'medium'|'high'|'critical'; status:'planned'|'in_progress'|'completed'|'cancelled'; scheduled_for:string; assigned_to:string|null; summary:string|null; started_at:string|null; completed_at:string|null; cancelled_at:string|null; lock_version:number; created_at:string; updated_at:string };
-export type ScoutingVisitEvent = { id:number; visit_id:string; action:'created'|'status_changed'; previous_status:ScoutingVisit['status']|null; next_status:ScoutingVisit['status']; details:Record<string,unknown>; created_at:string };
+export type ScoutingVisitEvent = { id:number; visit_id:string; action:'created'|'assigned'|'status_changed'; previous_status:ScoutingVisit['status']|null; next_status:ScoutingVisit['status']; details:Record<string,unknown>; created_at:string };
+export type ScoutingAssignee = { user_id:string; display_name:string; member_role:'owner'|'admin'|'agronomist'|'operator' };
 export type ScoutingFinding = { id:string; parcel_id:string; visit_id:string; category:'crop_condition'|'pest_signal'|'water'|'soil'|'infrastructure'|'other'; severity:'info'|'low'|'medium'|'high'|'critical'; observed_at:string; latitude:number|null; longitude:number|null; accuracy_m:number|null; notes:string; created_at:string };
 export type ScoutingFindingMedia = { id:string; finding_id:string; visit_id:string; object_path:string; original_filename:string; mime_type:'image/jpeg'|'image/png'|'image/webp'; size_bytes:number; sha256:string; capture_source:'camera'|'library'; captured_at:string; caption:string|null; created_at:string };
 export type Recommendation = { id: string; title: string; rationale: string; action: string; priority: 'critical'|'high'|'medium'|'low'; status: 'open'|'accepted'|'dismissed'|'completed'; confidence: number; evidence: unknown[]; valid_until: string | null; generated_at: string };
@@ -32,7 +33,7 @@ export type AiBriefResult = { summary:string; data_quality_score:number; priorit
 export type AiAnalysisRun = { id:string; organization_id:string; establishment_id:string; analysis_type:'operational_brief'; question:string|null; prompt_version:string; result:AiBriefResult; created_at:string; completed_at:string; expires_at:string };
 
 export type Workspace = {
-  organization: { id: string; name: string; role: string } | null;
+  organization: { id: string; name: string; role: string; userId:string } | null;
   establishment: Establishment | null;
   parcels: Parcel[];
   devices: Device[];
@@ -45,6 +46,7 @@ export type Workspace = {
   satelliteAnalysisRuns: SatelliteAnalysisRun[];
   scoutingVisits: ScoutingVisit[];
   scoutingVisitEvents: ScoutingVisitEvent[];
+  scoutingAssignees: ScoutingAssignee[];
   scoutingFindings: ScoutingFinding[];
   scoutingFindingMedia: ScoutingFindingMedia[];
   recommendations: Recommendation[];
@@ -60,7 +62,7 @@ export type Workspace = {
 };
 
 function emptyOperation() {
-  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], scoutingVisits:[], scoutingVisitEvents:[], scoutingFindings:[], scoutingFindingMedia:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
+  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], scoutingVisits:[], scoutingVisitEvents:[], scoutingAssignees:[], scoutingFindings:[], scoutingFindingMedia:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
 }
 
 async function requireClient() {
@@ -76,16 +78,17 @@ export function useWorkspace() {
     queryFn: async () => {
       const client = await requireClient();
       const { data: membership, error: membershipError } = await client
-        .from('organization_members').select('organization_id,role,organizations(id,name)').limit(1).maybeSingle();
+        .from('organization_members').select('organization_id,user_id,role,organizations(id,name)').limit(1).maybeSingle();
       if (membershipError) throw membershipError;
       if (!membership) return { organization:null, establishment:null, ...emptyOperation() };
       const organizationRecord = Array.isArray(membership.organizations) ? membership.organizations[0] : membership.organizations;
-      const organization = { id: membership.organization_id, name: organizationRecord?.name ?? 'Organización', role: membership.role };
+      const organization = { id: membership.organization_id, name: organizationRecord?.name ?? 'Organización', role: membership.role, userId:membership.user_id };
       const { data: establishments, error: establishmentError } = await client.from('establishments').select('*').eq('organization_id', organization.id).order('created_at').limit(1);
       if (establishmentError) throw establishmentError;
       const establishment = (establishments?.[0] as Establishment | undefined) ?? null;
       if (!establishment) return { organization, establishment:null, ...emptyOperation() };
-      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
+      const [assigneesResult, parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
+        client.rpc('list_scouting_assignees',{target_establishment:establishment.id}),
         client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score,boundary_geojson').eq('establishment_id', establishment.id).order('name'),
         client.from('devices').select('id,external_id,display_name,kind,status,last_seen_at,parcel_id,expected_interval_minutes,installed_at').eq('establishment_id', establishment.id).order('display_name'),
         client.from('latest_sensor_readings').select('id,device_id,observed_at,metric,value,unit,quality,ingested_at').eq('establishment_id', establishment.id).order('observed_at', { ascending: false }).limit(500),
@@ -110,8 +113,8 @@ export function useWorkspace() {
         client.from('operational_summary').select('*').eq('establishment_id',establishment.id).maybeSingle(),
         client.from('latest_ai_analysis').select('id,organization_id,establishment_id,analysis_type,question,prompt_version,result,created_at,completed_at,expires_at').eq('establishment_id',establishment.id).maybeSingle(),
       ]);
-      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
-      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], scoutingFindingMedia:scoutingMediaResult.data as ScoutingFindingMedia[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
+      for (const result of [assigneesResult, parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
+      return { organization, establishment, scoutingAssignees:assigneesResult.data as ScoutingAssignee[], parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], scoutingFindingMedia:scoutingMediaResult.data as ScoutingFindingMedia[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
     },
   });
 }
@@ -139,6 +142,12 @@ async function scoutingEvidenceError(error:unknown){
     if(code||detail)return new Error([code,detail].filter(Boolean).join(' · '));
   }
   return error instanceof Error?error:new Error('No se pudo guardar la evidencia');
+}
+
+function shouldRetryScoutingEvidence(error:unknown){
+  const context=(error as {context?:unknown})?.context;
+  if(!(context instanceof Response))return true;
+  return [408,425,429,500,502,503,504].includes(context.status);
 }
 
 export function useProvisionDevice() {
@@ -401,12 +410,26 @@ export function useTransitionMachineWorkOrder(){
 export function useCreateScoutingVisit(){
   const queryClient=useQueryClient();
   return useMutation({
-    mutationFn:async(input:{establishmentId:string;parcelId:string;sourceMetricId:string|null;title:string;objective:string;priority:ScoutingVisit['priority'];scheduledFor:string})=>{
+    mutationFn:async(input:{establishmentId:string;parcelId:string;sourceMetricId:string|null;title:string;objective:string;priority:ScoutingVisit['priority'];scheduledFor:string;assignedUserId:string})=>{
       const client=await requireClient();
-      const {data,error}=await client.rpc('create_scouting_visit',{
+      const {data,error}=await client.rpc('create_scouting_visit_v2',{
         target_establishment:input.establishmentId,target_parcel:input.parcelId,target_source_metric:input.sourceMetricId,
         visit_title:input.title.trim(),visit_objective:input.objective.trim(),visit_priority:input.priority,
-        visit_scheduled_for:input.scheduledFor,request_id:crypto.randomUUID(),
+        visit_scheduled_for:input.scheduledFor,assigned_user:input.assignedUserId,request_id:crypto.randomUUID(),
+      });
+      if(error)throw error;return entityIdSchema.parse(data);
+    },
+    onSuccess:()=>invalidateWorkspace(queryClient),
+  });
+}
+
+export function useReassignScoutingVisit(){
+  const queryClient=useQueryClient();
+  return useMutation({
+    mutationFn:async(input:{visitId:string;assignedUserId:string})=>{
+      const client=await requireClient();
+      const {data,error}=await client.rpc('reassign_scouting_visit',{
+        target_visit:input.visitId,assigned_user:input.assignedUserId,request_id:crypto.randomUUID(),
       });
       if(error)throw error;return entityIdSchema.parse(data);
     },
@@ -450,20 +473,26 @@ export function useUploadScoutingEvidence(){
       const client=await requireClient();
       if(!['image/jpeg','image/png','image/webp'].includes(input.file.type))throw new Error('Usá una imagen JPEG, PNG o WebP');
       if(input.file.size<1||input.file.size>8*1024*1024)throw new Error('La imagen debe pesar hasta 8 MB');
-      const {data,error}=await client.functions.invoke('scouting-evidence',{
-        body:input.file,
-        headers:{
-          'Content-Type':input.file.type,
-          'x-finding-id':input.findingId,
-          'x-request-id':crypto.randomUUID(),
-          'x-captured-at':input.capturedAt,
-          'x-capture-source':input.captureSource,
-          'x-caption':encodeURIComponent(input.caption.trim()),
-          'x-file-name':encodeURIComponent(input.file.name),
-        },
-      });
-      if(error)throw await scoutingEvidenceError(error);
-      return scoutingEvidenceResponseSchema.parse(data);
+      if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Sin conexión. La foto sigue sólo en esta pantalla; reconectate y volvé a intentar.');
+      const requestId=crypto.randomUUID();
+      for(let attempt=0;attempt<3;attempt++){
+        const {data,error}=await client.functions.invoke('scouting-evidence',{
+          body:input.file,
+          headers:{
+            'Content-Type':input.file.type,
+            'x-finding-id':input.findingId,
+            'x-request-id':requestId,
+            'x-captured-at':input.capturedAt,
+            'x-capture-source':input.captureSource,
+            'x-caption':encodeURIComponent(input.caption.trim()),
+            'x-file-name':encodeURIComponent(input.file.name),
+          },
+        });
+        if(!error)return scoutingEvidenceResponseSchema.parse(data);
+        if(attempt===2||!shouldRetryScoutingEvidence(error))throw await scoutingEvidenceError(error);
+        await new Promise(resolve=>setTimeout(resolve,attempt===0?600:1600));
+      }
+      throw new Error('No se pudo guardar la evidencia');
     },
     onSuccess:()=>invalidateWorkspace(queryClient),
   });

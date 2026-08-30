@@ -4,7 +4,7 @@ Actualizado: 2026-08-30. NODO Scout organiza verificación en campo; no reemplaz
 
 ## Flujo verificable
 
-1. **Planificar:** seleccionar lote, objetivo, prioridad y horario. Si nace desde NODO Earth, la recorrida conserva un snapshot de índice, valor, calidad, escena y algoritmo.
+1. **Planificar y asignar:** seleccionar lote, responsable, objetivo, prioridad y horario. Si nace desde NODO Earth, la recorrida conserva un snapshot de índice, valor, calidad, escena y algoritmo.
 2. **Iniciar:** una recorrida debe quedar `in_progress` antes de aceptar observaciones.
 3. **Observar:** registrar categoría, severidad, momento, descripción y ubicación opcional con precisión declarada por el dispositivo. Una visita en curso también puede adjuntar fotografías al hallazgo.
 4. **Contrastar:** revisar cultivo, fenología, manejo, clima, sensor y antecedentes. Un color o hallazgo aislado no demuestra causalidad.
@@ -16,7 +16,9 @@ Actualizado: 2026-08-30. NODO Scout organiza verificación en campo; no reemplaz
 - `planned → cancelled`
 - `in_progress → cancelled`
 
-Propietario, administrador, agrónomo y operador pueden ejecutar el flujo. El rol viewer sólo consulta. Las escrituras directas están revocadas; las RPC derivan organización y rol desde la sesión, validan lote/fuente y usan UUID de idempotencia.
+Propietario, administrador y agrónomo pueden supervisar cualquier recorrida y reasignar las que estén abiertas. Un operador puede crear una recorrida para sí mismo y sólo iniciar, observar, fotografiar o cerrar aquellas asignadas a su usuario. El rol viewer sólo consulta. Estas reglas se aplican en PostgreSQL y al cargar evidencia, no sólo en la interfaz.
+
+El directorio Scout contiene únicamente integrantes operativos del mismo tenant y no expone correos. Cada reasignación conserva responsable anterior, nuevo responsable, actor y momento. Las vistas `Todas`, `Mías` y `Sin responsable` distinguen carga personal, carga del equipo y registros históricos incompletos.
 
 ## Severidad
 
@@ -42,7 +44,7 @@ La ubicación es opcional. Cuando se captura, NODO almacena latitud, longitud y 
 
 ## Limitaciones de esta versión
 
-- Requiere conectividad al guardar. La PWA mantiene el shell disponible, pero no persiste fotos, tokens, coordenadas u operaciones en una cola local insegura; el vault offline cifrado y la carga reanudable siguen como gate de campo.
+- Requiere conectividad al guardar. Ante HTTP 408/425/429 o fallos 5xx, la interfaz reintenta hasta tres veces con el mismo identificador idempotente. La PWA mantiene el shell disponible, pero no persiste fotos, tokens, coordenadas u operaciones en una cola local insegura; el vault offline cifrado y la carga reanudable siguen como gate de campo.
 - La versión actual valida firma binaria y tamaño, pero todavía no ejecuta análisis antimalware ni moderación visual.
 - No verifica que el punto esté dentro del polígono ni sustituye instrumentos calibrados.
 - Una recorrida satelital usa el snapshot histórico aunque el índice se recalcule después, preservando reproducibilidad.

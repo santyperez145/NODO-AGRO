@@ -5,7 +5,7 @@
 - Proyecto: `NODO-AGRO`
 - Referencia: `kbhvgbczerfgdmfpugxr`
 - Región: São Paulo (`sa-east-1`)
-- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`, `20260829200000`, `20260829201000`, `20260829202000`, `20260829210000`, `20260829220000`, `20260830090000`, `20260830091000`, `20260830092000`, `20260830100000`
+- Migraciones remotas: `20260829153000`, `20260829154000`, `20260829170000`, `20260829171000`, `20260829171100`, `20260829171200`, `20260829180000`, `20260829181000`, `20260829181100`, `20260829190000`, `20260829190100`, `20260829190200`, `20260829200000`, `20260829201000`, `20260829202000`, `20260829210000`, `20260829220000`, `20260830090000`, `20260830091000`, `20260830092000`, `20260830100000`, `20260830110000`, `20260830110100`
 - Edge Functions con JWT de usuario: `sync-intelligence`, `satellite-analytics`, `agro-intelligence` y `scouting-evidence`. Funciones con token independiente de dispositivo: `ingest-telemetry` y `device-control`.
 
 Comandos reproducibles:
@@ -60,6 +60,7 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - NODO Scout: tablas de recorridas, bitácora y hallazgos desplegadas con RLS y escrituras sólo por RPC. La máquina de estados, idempotencia, snapshot satelital server-owned, ubicación opcional y precisión están activas. La restricción de auditoría central se corrigió para incluir tanto órdenes de flota como recorridas y hallazgos.
 - Validación visual de Scout: una sesión `owner` abrió la vista vacía real, el formulario manual y el flujo Earth → Scout. NDVI `0,100` del lote Bajo precompletó lote, evidencia, objetivo y prioridad sin insertar una recorrida de prueba. La consola permaneció sin errores ni advertencias.
 - Scout Field: bucket privado, metadata append-only, hash server-side, enlaces firmados y función `scouting-evidence` desplegados. `OPTIONS` respondió 200 y una carga sin sesión fue rechazada con 401. La sesión owner mostró `0 observaciones · 0 fotos` sin insertar evidencia ficticia.
+- Scout Team: directorio tenant-scoped, creación con responsable, reasignación auditable y autorización por responsable desplegados. La sesión `owner` recibió desde la RPC al miembro real `Santy Perez · Propietario`; las agendas `Todas`, `Mías` y `Sin responsable` y el formulario responsive se validaron sin insertar recorridas ficticias. Una recarga posterior no reprodujo avisos ni errores de consola.
 - OAuth y PWA: Google usa PKCE y el callback se sanea después de recuperar la sesión. El build genera manifest, registro y service worker con 23 recursos estáticos; no existe runtime cache para Supabase ni imágenes privadas.
 - Estabilidad cartográfica: se desactivó la transición de zoom al encuadrar o desmontar mapas. La navegación rápida Centro de mando → Recorridas se reprodujo con cero errores y cero advertencias de consola.
 - Esri World Imagery: teselas satelitales y capa de etiquetas verificadas en el establecimiento real, con atribución visible.

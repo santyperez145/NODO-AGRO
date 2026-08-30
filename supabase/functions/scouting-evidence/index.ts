@@ -72,8 +72,9 @@ Deno.serve(async request=>{
   const {data:membership}=await admin.from('organization_members').select('role')
     .eq('organization_id',finding.organization_id).eq('user_id',userData.user.id).maybeSingle();
   if(!membership||!['owner','admin','agronomist','operator'].includes(membership.role))return response(403,{error:'insufficient_role'});
-  const {data:visit}=await admin.from('scouting_visits').select('status').eq('id',finding.visit_id).maybeSingle();
+  const {data:visit}=await admin.from('scouting_visits').select('status,assigned_to').eq('id',finding.visit_id).maybeSingle();
   if(!visit||visit.status!=='in_progress')return response(409,{error:'visit_not_in_progress'});
+  if(membership.role==='operator'&&visit.assigned_to!==userData.user.id)return response(403,{error:'visit_assigned_to_another_member'});
 
   const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
   const sha256=Array.from(digest,value=>value.toString(16).padStart(2,'0')).join('');
