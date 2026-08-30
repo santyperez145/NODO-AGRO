@@ -17,6 +17,7 @@ export type SatelliteAnalysisRun = { id:string; satellite_scene_id:string; index
 export type ScoutingVisit = { id:string; parcel_id:string; source_type:'manual'|'satellite_ndvi'|'satellite_ndmi'|'weather'|'iot'; source_metric_id:string|null; source_snapshot:Record<string,unknown>; title:string; objective:string|null; priority:'low'|'medium'|'high'|'critical'; status:'planned'|'in_progress'|'completed'|'cancelled'; scheduled_for:string; assigned_to:string|null; summary:string|null; started_at:string|null; completed_at:string|null; cancelled_at:string|null; lock_version:number; created_at:string; updated_at:string };
 export type ScoutingVisitEvent = { id:number; visit_id:string; action:'created'|'status_changed'; previous_status:ScoutingVisit['status']|null; next_status:ScoutingVisit['status']; details:Record<string,unknown>; created_at:string };
 export type ScoutingFinding = { id:string; parcel_id:string; visit_id:string; category:'crop_condition'|'pest_signal'|'water'|'soil'|'infrastructure'|'other'; severity:'info'|'low'|'medium'|'high'|'critical'; observed_at:string; latitude:number|null; longitude:number|null; accuracy_m:number|null; notes:string; created_at:string };
+export type ScoutingFindingMedia = { id:string; finding_id:string; visit_id:string; object_path:string; original_filename:string; mime_type:'image/jpeg'|'image/png'|'image/webp'; size_bytes:number; sha256:string; capture_source:'camera'|'library'; captured_at:string; caption:string|null; created_at:string };
 export type Recommendation = { id: string; title: string; rationale: string; action: string; priority: 'critical'|'high'|'medium'|'low'; status: 'open'|'accepted'|'dismissed'|'completed'; confidence: number; evidence: unknown[]; valid_until: string | null; generated_at: string };
 export type LivestockGroup = { id:string; parcel_id:string|null; name:string; species:'cattle'|'sheep'|'goat'|'horse'|'other'; category:string; head_count:number; average_weight_kg:number|null; status:'active'|'closed'; last_observed_at:string; notes:string|null };
 export type LivestockEvent = { id:string; group_id:string; event_type:'initial_stock'|'birth'|'purchase'|'sale'|'mortality'|'transfer_in'|'transfer_out'|'adjustment'|'weighing'; occurred_at:string; head_delta:number; resulting_head_count:number; average_weight_kg:number|null; reason:string|null; created_at:string };
@@ -45,6 +46,7 @@ export type Workspace = {
   scoutingVisits: ScoutingVisit[];
   scoutingVisitEvents: ScoutingVisitEvent[];
   scoutingFindings: ScoutingFinding[];
+  scoutingFindingMedia: ScoutingFindingMedia[];
   recommendations: Recommendation[];
   livestockGroups: LivestockGroup[];
   livestockEvents: LivestockEvent[];
@@ -58,7 +60,7 @@ export type Workspace = {
 };
 
 function emptyOperation() {
-  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], scoutingVisits:[], scoutingVisitEvents:[], scoutingFindings:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
+  return { parcels:[], devices:[], sensorReadings:[], deviceTwins:[], deviceCommands:[], weather:null, satellite:null, satelliteMetrics:[], satelliteAnalysisRuns:[], scoutingVisits:[], scoutingVisitEvents:[], scoutingFindings:[], scoutingFindingMedia:[], recommendations:[], livestockGroups:[], livestockEvents:[], machineAssets:[], machineEvents:[], maintenanceWorkOrders:[], maintenanceWorkOrderEvents:[], financialEntries:[], operationalSummary:null, latestAiAnalysis:null };
 }
 
 async function requireClient() {
@@ -83,7 +85,7 @@ export function useWorkspace() {
       if (establishmentError) throw establishmentError;
       const establishment = (establishments?.[0] as Establishment | undefined) ?? null;
       if (!establishment) return { organization, establishment:null, ...emptyOperation() };
-      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
+      const [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult] = await Promise.all([
         client.from('land_parcels').select('id,name,use,crop,area_hectares,health_score,boundary_geojson').eq('establishment_id', establishment.id).order('name'),
         client.from('devices').select('id,external_id,display_name,kind,status,last_seen_at,parcel_id,expected_interval_minutes,installed_at').eq('establishment_id', establishment.id).order('display_name'),
         client.from('latest_sensor_readings').select('id,device_id,observed_at,metric,value,unit,quality,ingested_at').eq('establishment_id', establishment.id).order('observed_at', { ascending: false }).limit(500),
@@ -96,6 +98,7 @@ export function useWorkspace() {
         client.from('scouting_visits').select('id,parcel_id,source_type,source_metric_id,source_snapshot,title,objective,priority,status,scheduled_for,assigned_to,summary,started_at,completed_at,cancelled_at,lock_version,created_at,updated_at').eq('establishment_id',establishment.id).order('scheduled_for',{ascending:false}).limit(200),
         client.from('scouting_visit_events').select('id,visit_id,action,previous_status,next_status,details,created_at').eq('establishment_id',establishment.id).order('created_at',{ascending:false}).limit(400),
         client.from('scouting_findings').select('id,parcel_id,visit_id,category,severity,observed_at,latitude,longitude,accuracy_m,notes,created_at').eq('establishment_id',establishment.id).order('observed_at',{ascending:false}).limit(500),
+        client.from('scouting_finding_media').select('id,finding_id,visit_id,object_path,original_filename,mime_type,size_bytes,sha256,capture_source,captured_at,caption,created_at').eq('establishment_id',establishment.id).order('captured_at',{ascending:false}).limit(500),
         client.from('recommendations').select('id,title,rationale,action,priority,status,confidence,evidence,valid_until,generated_at').eq('establishment_id', establishment.id).eq('status', 'open').order('generated_at', { ascending: false }).limit(8),
         client.from('livestock_groups').select('id,parcel_id,name,species,category,head_count,average_weight_kg,status,last_observed_at,notes').eq('establishment_id',establishment.id).order('status').order('name'),
         client.from('livestock_events').select('id,group_id,event_type,occurred_at,head_delta,resulting_head_count,average_weight_kg,reason,created_at').eq('establishment_id',establishment.id).order('occurred_at',{ascending:false}).limit(100),
@@ -107,8 +110,8 @@ export function useWorkspace() {
         client.from('operational_summary').select('*').eq('establishment_id',establishment.id).maybeSingle(),
         client.from('latest_ai_analysis').select('id,organization_id,establishment_id,analysis_type,question,prompt_version,result,created_at,completed_at,expires_at').eq('establishment_id',establishment.id).maybeSingle(),
       ]);
-      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
-      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
+      for (const result of [parcelsResult, devicesResult, readingsResult, twinsResult, commandsResult, weatherResult, satelliteResult, satelliteMetricsResult, satelliteRunsResult, scoutingVisitsResult, scoutingVisitEventsResult, scoutingFindingsResult, scoutingMediaResult, recommendationsResult, livestockGroupsResult, livestockEventsResult, machineAssetsResult, machineEventsResult, workOrdersResult, workOrderEventsResult, financialEntriesResult, operationalSummaryResult, aiAnalysisResult]) if (result.error) throw result.error;
+      return { organization, establishment, parcels:parcelsResult.data as Parcel[], devices:devicesResult.data as Device[], sensorReadings:readingsResult.data as SensorReading[], deviceTwins:twinsResult.data as DeviceTwin[], deviceCommands:commandsResult.data as DeviceCommand[], weather:weatherResult.data as WeatherObservation|null, satellite:satelliteResult.data as SatelliteScene|null, satelliteMetrics:satelliteMetricsResult.data as ParcelSatelliteMetric[], satelliteAnalysisRuns:satelliteRunsResult.data as SatelliteAnalysisRun[], scoutingVisits:scoutingVisitsResult.data as ScoutingVisit[], scoutingVisitEvents:scoutingVisitEventsResult.data as ScoutingVisitEvent[], scoutingFindings:scoutingFindingsResult.data as ScoutingFinding[], scoutingFindingMedia:scoutingMediaResult.data as ScoutingFindingMedia[], recommendations:recommendationsResult.data as Recommendation[], livestockGroups:livestockGroupsResult.data as LivestockGroup[], livestockEvents:livestockEventsResult.data as LivestockEvent[], machineAssets:machineAssetsResult.data as MachineAsset[], machineEvents:machineEventsResult.data as MachineEvent[], maintenanceWorkOrders:workOrdersResult.data as MaintenanceWorkOrder[], maintenanceWorkOrderEvents:workOrderEventsResult.data as MaintenanceWorkOrderEvent[], financialEntries:financialEntriesResult.data as FinancialEntry[], operationalSummary:operationalSummaryResult.data as OperationalSummary|null, latestAiAnalysis:aiAnalysisResult.data as AiAnalysisRun|null };
     },
   });
 }
@@ -125,6 +128,18 @@ export function deviceConnectionState(device:Device,now=Date.now()):DeviceConnec
 }
 
 const provisionedDeviceSchema=z.object({device_id:z.string().uuid(),token:z.string().min(32)});
+const scoutingEvidenceResponseSchema=z.object({media_id:z.string().uuid(),finding_id:z.string().uuid(),sha256:z.string().regex(/^[0-9a-f]{64}$/).optional(),size_bytes:z.number().int().positive().optional(),mime_type:z.string().optional()});
+
+async function scoutingEvidenceError(error:unknown){
+  const context=(error as {context?:unknown})?.context;
+  if(context instanceof Response){
+    const payload=await context.clone().json().catch(()=>null) as {error?:unknown;detail?:unknown}|null;
+    const code=typeof payload?.error==='string'?payload.error:'';
+    const detail=typeof payload?.detail==='string'?payload.detail:'';
+    if(code||detail)return new Error([code,detail].filter(Boolean).join(' · '));
+  }
+  return error instanceof Error?error:new Error('No se pudo guardar la evidencia');
+}
 
 export function useProvisionDevice() {
   const queryClient=useQueryClient();
@@ -425,6 +440,49 @@ export function useRecordScoutingFinding(){
       if(error)throw error;return entityIdSchema.parse(data);
     },
     onSuccess:()=>invalidateWorkspace(queryClient),
+  });
+}
+
+export function useUploadScoutingEvidence(){
+  const queryClient=useQueryClient();
+  return useMutation({
+    mutationFn:async(input:{findingId:string;file:File;caption:string;capturedAt:string;captureSource:'camera'|'library'})=>{
+      const client=await requireClient();
+      if(!['image/jpeg','image/png','image/webp'].includes(input.file.type))throw new Error('Usá una imagen JPEG, PNG o WebP');
+      if(input.file.size<1||input.file.size>8*1024*1024)throw new Error('La imagen debe pesar hasta 8 MB');
+      const {data,error}=await client.functions.invoke('scouting-evidence',{
+        body:input.file,
+        headers:{
+          'Content-Type':input.file.type,
+          'x-finding-id':input.findingId,
+          'x-request-id':crypto.randomUUID(),
+          'x-captured-at':input.capturedAt,
+          'x-capture-source':input.captureSource,
+          'x-caption':encodeURIComponent(input.caption.trim()),
+          'x-file-name':encodeURIComponent(input.file.name),
+        },
+      });
+      if(error)throw await scoutingEvidenceError(error);
+      return scoutingEvidenceResponseSchema.parse(data);
+    },
+    onSuccess:()=>invalidateWorkspace(queryClient),
+  });
+}
+
+export function useScoutingEvidenceUrls(media:ScoutingFindingMedia[]){
+  return useQuery<Record<string,string>>({
+    queryKey:['scouting-evidence-urls',media.map(item=>`${item.id}:${item.object_path}`)],
+    enabled:media.length>0,
+    staleTime:4*60_000,
+    queryFn:async()=>{
+      const client=await requireClient();
+      const entries=await Promise.all(media.map(async item=>{
+        const {data,error}=await client.storage.from('scouting-evidence').createSignedUrl(item.object_path,300);
+        if(error)throw error;
+        return [item.id,data.signedUrl] as const;
+      }));
+      return Object.fromEntries(entries);
+    },
   });
 }
 

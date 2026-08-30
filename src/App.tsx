@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState } from 'react';
-import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Pencil, Radio, RefreshCw, Satellite, ScanSearch, ShieldAlert, Tractor, TrendingUp, Wifi } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Activity, Beef, Bot, CloudRain, Database, Gauge, Leaf, LoaderCircle, LogOut, Map, Pencil, Radio, RefreshCw, Satellite, ScanSearch, ShieldAlert, Tractor, TrendingUp, Wifi, WifiOff } from 'lucide-react';
 import { AuthGate } from './auth/AuthGate';
 import { Onboarding } from './Onboarding';
 import { supabase } from './lib/supabase';
@@ -47,10 +47,17 @@ function Dashboard({data}: {data: Workspace}) {
     <button className="logout" onClick={()=>void supabase?.auth.signOut()}><LogOut/> Cerrar sesión</button>
   </aside><main>
     <header><div><p>{new Intl.DateTimeFormat('es-AR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()).toUpperCase()} · DATOS TRAZABLES</p><h1>{active}</h1><span>{establishment.latitude.toFixed(4)}, {establishment.longitude.toFixed(4)} · Rol {data.organization!.role}</span></div><div className="actions"><button className="syncButton" disabled={sync.isPending} onClick={()=>sync.mutate(establishment.id)}>{sync.isPending?<LoaderCircle className="spin"/>:<RefreshCw/>} Sincronizar fuentes</button></div></header>
+    <ConnectivityBanner/>
     {sync.error&&<div className="sourceError"><ShieldAlert/>La sincronización falló: {sync.error instanceof Error?sync.error.message:'error no identificado'}. Los últimos datos válidos permanecen visibles.</div>}
     {sync.isSuccess&&<div className="sourceSuccess"><Database/>Fuentes actualizadas y persistidas con trazabilidad.</div>}
     {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})}/>:active==='Mapa vivo'?<MapPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Recorridas'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando recorridas…</div>}><ScoutPanel data={data} seed={scoutSeed} onSeedConsumed={()=>setScoutSeed(null)}/></Suspense>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
   </main></div>;
+}
+
+function ConnectivityBanner(){
+  const [online,setOnline]=useState(()=>navigator.onLine);
+  useEffect(()=>{const connected=()=>setOnline(true);const disconnected=()=>setOnline(false);window.addEventListener('online',connected);window.addEventListener('offline',disconnected);return()=>{window.removeEventListener('online',connected);window.removeEventListener('offline',disconnected)}},[]);
+  return online?null:<div className="offlineBanner"><WifiOff/><div><b>Sin conexión · modo de consulta local</b><span>El shell permanece disponible, pero NODO no guarda fotos, coordenadas ni operaciones en una cola insegura. Reconectá para sincronizar.</span></div></div>;
 }
 
 type WeatherValue={observed_at:string;temperature_c:number;humidity_pct:number;precipitation_mm:number;wind_kmh:number;forecast_rain_7d_mm:number;source:string};

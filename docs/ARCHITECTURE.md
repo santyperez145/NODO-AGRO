@@ -15,6 +15,8 @@
 - **Límite espectral:** `unmasked-v1` usa nubosidad global y suficiencia de píxeles; todavía no aplica máscara SCL por píxel ni normalización fenológica. Las capas son proxies para orientar inspección y no diagnostican estrés, enfermedad, riego o rendimiento.
 - **NODO Scout:** `scouting_visits` enlaza lote, responsable, prioridad, horario y una fuente opcional. Si nace desde Earth, el servidor deriva y congela el snapshot espectral; el navegador no puede fabricar esa evidencia. `scouting_visit_events` conserva la máquina de estados e idempotencia y `scouting_findings` agrega observaciones append-only con punto y precisión opcionales.
 - **Integridad de campo:** tres triggers validan organización, establecimiento, lote, métrica, visita y responsable. Las RPC `create_scouting_visit`, `transition_scouting_visit` y `record_scouting_finding` derivan el rol desde la sesión. Sólo una visita en curso acepta hallazgos y todo cierre requiere resumen.
+- **Evidencia privada:** `scouting_finding_media` conserva metadatos append-only y `scouting-evidence` es un bucket privado de 8 MB por objeto. La Edge Function homónima autentica usuario/rol, comprueba estado, MIME, firma binaria, tamaño y captura, calcula SHA‑256 server-side y adjunta el objeto mediante una RPC exclusiva de `service_role`. Si el registro atómico falla, elimina el objeto huérfano.
+- **Acceso multimedia:** el navegador no inserta objetos ni metadatos. RLS vincula cada ruta organización/establecimiento/visita/hallazgo con una fila persistida y sólo permite emitir URL firmada de cinco minutos a un miembro del tenant.
 - **Inteligencia con campo:** `agro-intelligence` incorpora índices, recorridas y hallazgos al snapshot server-side, pero elimina coordenadas exactas y conserva únicamente si el hallazgo fue geolocalizado. Texto de campo continúa tratándose como dato no confiable y evidencia, nunca como instrucción o diagnóstico.
 - **Decisiones:** reglas transparentes para lluvia, viento y helada. Cada recomendación conserva evidencia, confianza, vigencia, estado y usuario que decide.
 - **Inteligencia transversal:** `agro-intelligence` autentica al usuario, deriva organización y rol en servidor y arma un snapshot acotado desde las fuentes operativas. El navegador sólo envía el establecimiento y una pregunta opcional; no puede fabricar el contexto del modelo. Identificadores de dispositivos se reemplazan por alias efímeros y el detalle libre del libro económico no sale del servidor.
@@ -32,10 +34,11 @@
 - **Auditoría:** `operational_audit_events` solo puede escribirse desde funciones `security definer`; propietario y administrador pueden leerla, pero ningún rol del navegador puede alterarla.
 - **API transaccional:** las mutaciones críticas derivan organización y rol desde la sesión, validan referencias cruzadas al establecimiento y usan UUID de idempotencia. Las vistas de consulta declaran `security_invoker` para conservar RLS.
 - **Calidad continua:** GitHub Actions recompila el cliente, audita dependencias, levanta Supabase local, ejecuta lint SQL y pruebas pgTAP sobre RLS, privilegios, vistas y contrato append-only.
+- **PWA rural segura:** Workbox precachea únicamente el shell estático versionado. No existen reglas runtime para Supabase, teselas o evidencia privada; sin conexión se informa el límite y no se encolan datos sensibles sin un vault cifrado.
 
 ## Autenticación
 
-El cliente implementa sesiones reales con Supabase: email/contraseña, alta con confirmación, Google OAuth, persistencia, renovación y cierre de sesión. No existen usuarios demo ni bypass. Sin configuración válida se bloquea el envío y se explica la dependencia pendiente.
+El cliente implementa sesiones reales con Supabase: email/contraseña, alta con confirmación, Google OAuth PKCE, persistencia, renovación y cierre de sesión. Después de intercambiar el código elimina de la URL códigos, errores o fragmentos OAuth sensibles. No existen usuarios demo ni bypass. Sin configuración válida se bloquea el envío y se explica la dependencia pendiente.
 
 ## Estado de infraestructura
 

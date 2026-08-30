@@ -9,7 +9,7 @@ type Coordinates = { latitude: number; longitude: number };
 
 function MapSelection({position,onChange}:{position:Coordinates|null;onChange:(coordinates:Coordinates)=>void}) {
   const map = useMapEvents({ click(event: LeafletMouseEvent) { onChange({ latitude:event.latlng.lat, longitude:event.latlng.lng }); } });
-  useEffect(()=>{ if(position) map.setView([position.latitude,position.longitude], Math.max(map.getZoom(),13)); },[map,position]);
+  useEffect(()=>{ if(position) map.setView([position.latitude,position.longitude], Math.max(map.getZoom(),13),{animate:false}); },[map,position]);
   return position?<Marker position={[position.latitude,position.longitude]} draggable eventHandlers={{dragend(event){const point=(event.target as LeafletMarker).getLatLng();onChange({latitude:point.lat,longitude:point.lng});}}}/>:null;
 }
 
@@ -23,6 +23,6 @@ export function LocationPicker({position,onChange}:{position:Coordinates|null;on
   function choose(place:PlaceResult){onChange({latitude:place.latitude,longitude:place.longitude},place.label);setTerm(place.label);setResults([])}
   const center:LatLngExpression=position?[position.latitude,position.longitude]:[-34.6,-64.0];
   return <section className="locationPicker"><div className="mapSearch"><label htmlFor="place-search">Localidad cercana</label><div className="placeSearchControls"><Search/><input id="place-search" value={term} onChange={event=>setTerm(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void runSearch()}}} placeholder="Ej. Pergamino, Buenos Aires" minLength={2}/><button type="button" disabled={loading||term.trim().length<2} onClick={()=>void runSearch()}>{loading?<LoaderCircle className="spin"/>:'Buscar'}</button></div>{results.length>0&&<div className="placeResults">{results.map(place=><button type="button" key={place.id} onClick={()=>choose(place)}><b>{place.name}</b><span>{place.label}</span></button>)}</div>}{error&&<p className="formError">{error}</p>}</div>
-    <div className="mapPicker"><MapContainer center={center} zoom={position?15:4} scrollWheelZoom><SatelliteTiles/><MapSelection position={position} onChange={coordinates=>onChange(coordinates)}/><MapResize/></MapContainer><p>Hacé clic en el lote o arrastrá el marcador para ajustar la ubicación.</p></div>
+    <div className="mapPicker"><MapContainer center={center} zoom={position?15:4} scrollWheelZoom zoomAnimation={false}><SatelliteTiles/><MapSelection position={position} onChange={coordinates=>onChange(coordinates)}/><MapResize/></MapContainer><p>Hacé clic en el lote o arrastrá el marcador para ajustar la ubicación.</p></div>
   </section>;
 }

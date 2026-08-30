@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(64);
+select plan(72);
 
 select has_table('public','livestock_groups','livestock groups table exists');
 select has_table('public','livestock_events','append-only livestock events table exists');
@@ -19,6 +19,7 @@ select has_table('public','parcel_satellite_metrics','parcel spectral metrics ta
 select has_table('public','scouting_visits','scouting visits table exists');
 select has_table('public','scouting_visit_events','append-only scouting visit history exists');
 select has_table('public','scouting_findings','append-only field findings table exists');
+select has_table('public','scouting_finding_media','private scouting evidence metadata exists');
 
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='livestock_groups'),true,'livestock groups has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='livestock_events'),true,'livestock events has RLS enabled');
@@ -35,6 +36,7 @@ select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_visits'),true,'scouting visits have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_visit_events'),true,'scouting history has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_findings'),true,'scouting findings have RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_finding_media'),true,'scouting evidence metadata has RLS enabled');
 
 select is(has_table_privilege('authenticated','public.livestock_groups','INSERT'),false,'authenticated cannot bypass livestock RPC');
 select is(has_table_privilege('authenticated','public.machine_assets','UPDATE'),false,'authenticated cannot directly alter machine state');
@@ -56,6 +58,9 @@ select ok(has_table_privilege('authenticated','public.parcel_satellite_metrics',
 select is(has_table_privilege('authenticated','public.scouting_visits','INSERT'),false,'browser cannot bypass scouting RPC');
 select is(has_table_privilege('authenticated','public.scouting_visit_events','INSERT'),false,'browser cannot forge scouting history');
 select is(has_table_privilege('authenticated','public.scouting_findings','INSERT'),false,'browser cannot forge field findings');
+select is(has_table_privilege('authenticated','public.scouting_finding_media','INSERT'),false,'browser cannot attach evidence metadata directly');
+select is(has_table_privilege('authenticated','public.scouting_finding_media','UPDATE'),false,'browser cannot alter evidence metadata');
+select ok(has_table_privilege('authenticated','public.scouting_finding_media','SELECT'),'members can inspect authorized evidence metadata');
 
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='operational_summary'),'operational summary runs with invoker security');
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='latest_ai_analysis'),'latest intelligence view runs with invoker security');
@@ -66,8 +71,11 @@ select ok(has_function_privilege('authenticated','public.transition_machine_work
 select ok(has_function_privilege('authenticated','public.create_scouting_visit(uuid,uuid,uuid,text,text,scouting_priority,timestamp with time zone,uuid)','EXECUTE'),'authenticated role can create guarded scouting visits');
 select ok(has_function_privilege('authenticated','public.transition_scouting_visit(uuid,scouting_visit_status,text,uuid)','EXECUTE'),'authenticated role can transition guarded scouting visits');
 select ok(has_function_privilege('authenticated','public.record_scouting_finding(uuid,scouting_finding_category,scouting_severity,timestamp with time zone,double precision,double precision,double precision,text,uuid)','EXECUTE'),'authenticated role can record guarded field findings');
+select is(has_function_privilege('authenticated','public.attach_scouting_media_server(uuid,text,text,text,bigint,text,text,timestamp with time zone,text,uuid,uuid)','EXECUTE'),false,'browser cannot call the service-only media attachment function');
 select ok((select pg_get_constraintdef(oid) like '%maintenance_work_order%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts fleet work orders');
 select ok((select pg_get_constraintdef(oid) like '%scouting_finding%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts scouting entities');
+select ok((select pg_get_constraintdef(oid) like '%scouting_media%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts private scouting media');
+select is((select public from storage.buckets where id='scouting-evidence'),false,'scouting evidence bucket is private');
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='operational_summary'),'fleet summary keeps invoker security');
 
 select * from finish();

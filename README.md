@@ -13,11 +13,12 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 
 ## Integraciones reales
 
-- Supabase Auth: email/contraseña, confirmación y Google OAuth.
+- Supabase Auth: email/contraseña, confirmación y Google OAuth con PKCE y saneamiento automático del callback.
 - PostgreSQL multiempresa con grants y RLS.
 - Open-Meteo: clima actual y pronóstico de siete días, validados y persistidos.
 - NODO Earth: descubrimiento de escenas Sentinel-2 L2A mediante STAC, color real fechado, mapas NDVI/NDMI y estadísticas reales por polígono desde Microsoft Planetary Computer.
-- NODO Scout: recorridas por lote enlazadas a evidencia satelital o manual, máquina de estados, hallazgos georreferenciados opcionales y cierre auditable.
+- NODO Scout: recorridas por lote enlazadas a evidencia satelital o manual, hallazgos georreferenciados, fotografías privadas con hash SHA‑256 y cierre auditable.
+- PWA instalable: shell de aplicación versionado para conectividad rural; APIs, tokens, coordenadas e imágenes privadas quedan fuera del caché offline.
 - Red IoT operativa: alta de dispositivos por lote, credencial de un solo uso, endpoint con token hasheado, lotes idempotentes, calidad y frescura de lectura.
 - Motor de decisiones: reglas trazables con fuente, confianza, vigencia y aprobación humana.
 - Inteligencia transversal: un parte operativo server-side cruza clima, satélite, IoT, cultivos, rodeo, maquinaria y economía; conserva el snapshot de evidencia, aplica límites de consumo y exige salida estructurada validada.

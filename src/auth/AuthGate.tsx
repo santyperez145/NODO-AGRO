@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AlertCircle, Eye, EyeOff, LoaderCircle, LockKeyhole } from 'lucide-react';
-import { isAuthConfigured, supabase } from '../lib/supabase';
+import { isAuthConfigured, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -17,9 +17,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (!supabase) return;
     void supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage({ tone: 'error', text: error.message });
-      setSession(data.session); setLoading(false);
+      setSession(data.session); setLoading(false); scrubAuthCallbackUrl();
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => { setSession(next); setLoading(false); });
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next); setLoading(false);
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') scrubAuthCallbackUrl();
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -41,7 +44,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setMessage(null);
     if (!supabase) return;
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}${window.location.pathname}` } });
     if (error) { setMessage({ tone: 'error', text: error.message }); setSubmitting(false); }
   }
 
