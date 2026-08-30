@@ -70,6 +70,22 @@ function safeMessage(status: number) {
   return 'No pudimos generar el parte inteligente. Los datos operativos no fueron modificados.';
 }
 
+function publicFailure(code: string) {
+  if (/(insufficient_quota|billing|credit|hard_limit)/i.test(code)) return {
+    status: 402, code: 'credits_required',
+    message: 'La inteligencia está configurada, pero la cuenta no tiene crédito disponible.',
+  };
+  if (/(invalid_api_key|authentication|unauthorized)/i.test(code)) return {
+    status: 503, code: 'provider_credential_invalid',
+    message: 'La credencial de inteligencia debe renovarse antes de generar un parte.',
+  };
+  if (/(model_not_found|unsupported_model)/i.test(code)) return {
+    status: 503, code: 'model_unavailable',
+    message: 'El modelo configurado no está disponible para este proyecto.',
+  };
+  return { status: 500, code: 'analysis_failed', message: safeMessage(500) };
+}
+
 async function sha256(value: string) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -265,6 +281,7 @@ Deno.serve(async request => {
       if (auditError) console.error(JSON.stringify({ event: 'ai_brief_audit_failed', run_id: runId, code: auditError.code }));
     }
     console.error(JSON.stringify({ event: 'ai_brief_failed', run_id: runId, code, duration_ms: Date.now() - startedAt }));
-    return json({ error: safeMessage(500), code: 'analysis_failed' }, 500);
+    const failure = publicFailure(code);
+    return json({ error: failure.message, code: failure.code }, failure.status);
   }
 });

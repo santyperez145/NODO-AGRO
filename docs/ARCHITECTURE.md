@@ -43,7 +43,7 @@ Antes de declarar producción comercial completa todavía se requiere:
 3. Dibujar o importar polígonos parcelarios para calcular índices espectrales por lote.
 4. Validar hardware y calibración física en el establecimiento piloto.
 5. Definir el criterio contable, impositivo y centros de costo con el profesional responsable antes de usar el libro operativo como contabilidad formal.
-6. Configurar `OPENAI_API_KEY` como secreto de Edge Functions y ejecutar la evaluación de calidad/costo antes de habilitar el Parte Inteligente a pilotos. La función y la interfaz están desplegadas, pero sin ese secreto no se realizan inferencias ni se simulan respuestas.
+6. Agregar créditos y método de pago al proyecto aislado `NODO Agro` del proveedor antes de habilitar el Parte Inteligente. La cuenta de servicio y `OPENAI_API_KEY` ya están configuradas como secreto de Edge Functions, pero la organización tiene saldo API `USD 0,00`; no se realizan inferencias ni se simulan respuestas mientras persista ese estado.
 
 ## Contrato de telemetría
 

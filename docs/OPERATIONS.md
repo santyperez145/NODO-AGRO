@@ -29,7 +29,7 @@ npx supabase secrets set --env-file ./supabase/.env.functions --project-ref kbhv
 npx supabase functions deploy agro-intelligence --project-ref kbhvgbczerfgdmfpugxr
 ```
 
-`supabase/.env.functions` queda excluido por `.env.*` y debe eliminarse del equipo cuando el secreto haya sido cargado. Verificar la activación desde un usuario piloto autorizado y revisar calidad, latencia y tokens antes de ampliar cupos.
+`supabase/.env.functions` queda excluido por `.env.*` y debe eliminarse del equipo cuando el secreto haya sido cargado. En la configuración actual la clave se creó como cuenta de servicio dentro del proyecto aislado `NODO Agro` y se transfirió directamente al almacén cifrado de Supabase; no existe una copia en el repositorio. Verificar calidad, latencia y tokens desde un usuario piloto autorizado antes de ampliar cupos.
 
 La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local` nunca se versionan. La aplicación utiliza exclusivamente la clave pública en el navegador.
 
@@ -63,7 +63,7 @@ La contraseña de PostgreSQL, claves secretas, credenciales OAuth y `.env.local`
 - Onboarding: validado con sesión real; no se creó un establecimiento ficticio.
 - Núcleo operativo: rodeo event-sourced, activos/horómetros, mantenimiento y libro económico append-only desplegados. Las seis tablas nuevas tienen RLS y sus escrituras críticas pasan por RPC idempotentes y auditadas.
 - Sesión real: Centro de mando, Rodeo, Maquinaria y Economía consultaron el proyecto remoto sin errores; los formularios mostraron los tres lotes persistidos y se verificaron sin crear stock, activos o movimientos ficticios.
-- Capa transversal: tablas, RLS, vista segura, integridad multiempresa y función `agro-intelligence` desplegadas. La llamada sin JWT devuelve 401; una sesión `owner` recorrió autorización, snapshot y auditoría y mostró el estado `provider_not_configured` de forma visible porque `OPENAI_API_KEY` aún no está configurada. No se generó contenido ficticio.
+- Capa transversal: tablas, RLS, vista segura, integridad multiempresa y función `agro-intelligence` desplegadas. La llamada sin JWT devuelve 401. Una cuenta de servicio exclusiva y los secretos `OPENAI_API_KEY`/`NODO_AI_MODEL` están configurados; una sesión `owner` recorrió autorización, snapshot, proveedor y auditoría. La primera inferencia fue rechazada porque la organización API tiene saldo `USD 0,00`, dependencia que la interfaz muestra sin generar contenido ficticio.
 - UI real: el Parte Inteligente detectó 3/7 dominios con información en el establecimiento actual, renderizó correctamente junto al mapa y no produjo errores de consola. La compilación de producción terminó correctamente.
 
 La organización Supabase comparte cuota con otros proyectos. NODO-AGRO registraba 0 GB de egress y cached egress al momento de la revisión; la advertencia de cuota era organizacional y no originada por NODO.
