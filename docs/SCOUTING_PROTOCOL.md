@@ -46,7 +46,7 @@ La ubicación es opcional. Cuando se captura, NODO almacena latitud, longitud y 
 
 ## Limitaciones de esta versión
 
-- Hallazgos y fotografías pueden guardarse sin señal dentro de NODO Field Offline v2. Notas, coordenadas, visita, metadatos y bytes quedan autenticados y cifrados; la clave derivada permanece sólo en memoria y se bloquea tras 15 minutos de inactividad o al cerrar sesión.
+- NODO Field Offline v3 prepara por 24 horas un paquete cifrado mínimo con recorridas abiertas y su evidencia relacionada. Tras una recarga sin servidor sólo habilita Scout, y únicamente captura sobre visitas que ya estaban en curso. Hallazgos, fotografías, notas, coordenadas, visita, metadatos y bytes quedan autenticados y cifrados; la clave derivada permanece sólo en memoria y se bloquea tras 15 minutos de inactividad o al cerrar sesión.
 - La sincronización es manual y ordenada: primero hallazgos, luego fotos. El servidor vuelve a comprobar organización, rol, asignación y que la visita continúe en curso. Un rechazo queda visible y el pendiente no se elimina. El mismo UUID evita duplicados ante respuestas perdidas.
 - Las fotografías cifradas se reanudan por TUS en chunks de 6 MB. La URL de reanudación se conserva cifrada, nunca en `localStorage`; antes de transferir y al finalizar se vuelve a comprobar SHA‑256, firma y tamaño. Ningún binario privado entra al caché del service worker.
 - Perder la frase de protección hace irrecuperables los borradores locales. Restablecer la bóveda los elimina sólo después de confirmación explícita. El cifrado no compensa un dispositivo comprometido mientras está desbloqueado.

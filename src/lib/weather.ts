@@ -8,12 +8,12 @@ const schema = z.object({
 
 export type AgroWeather = { temperature: number; humidity: number; precipitationNow: number; wind: number; rain7d: number; source: string };
 
-export function useAgroWeather(latitude?: number, longitude?: number) {
+export function useAgroWeather(latitude?: number, longitude?: number, enabled=true) {
   const resolvedLatitude = latitude ?? Number(import.meta.env.VITE_FARM_LATITUDE ?? '-33.8913');
   const resolvedLongitude = longitude ?? Number(import.meta.env.VITE_FARM_LONGITUDE ?? '-60.5736');
   return useQuery<AgroWeather>({
     queryKey: ['weather', resolvedLatitude, resolvedLongitude],
-    enabled: Number.isFinite(resolvedLatitude) && Number.isFinite(resolvedLongitude),
+    enabled: enabled && Number.isFinite(resolvedLatitude) && Number.isFinite(resolvedLongitude),
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams({ latitude: String(resolvedLatitude), longitude: String(resolvedLongitude), current: 'temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m', daily: 'precipitation_sum', timezone: 'auto', forecast_days: '7' });
       const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal });

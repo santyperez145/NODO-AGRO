@@ -11,7 +11,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - Identidad real email/contraseña y Google, multiempresa y RLS.
 - NODO Earth con color real Sentinel-2, NDVI/NDMI por píxel, estadísticas auditables por lote y recorrido sugerido conservador.
 - NODO Scout con planificación desde Earth o manual, responsables configurables, reasignación y estados auditables, autorización por responsable, hallazgos georreferenciados y fotografía privada con hash server-side.
-- NODO Field Offline v2 con shell instalable, bóveda AES-GCM por usuario, bloqueo automático, hallazgos y fotografías cifrados, límites de cuota, sincronización idempotente y carga TUS reanudable; APIs, tokens y multimedia privada quedan fuera del caché.
+- NODO Field Offline v3 con shell instalable, paquete Scout mínimo de 24 horas, recuperación tras recarga sin servidor, bóveda AES-GCM por usuario, bloqueo automático, hallazgos y fotografías cifrados, límites de cuota, sincronización idempotente y carga TUS reanudable; APIs, tokens y multimedia privada quedan fuera del caché.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
 - Rodeo event-sourced, maquinaria por horómetro y libro económico append-only.
@@ -28,7 +28,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Elegir una zona y tres establecimientos con acceso semanal al decisor.
 - Levantar inventario real, conectividad, una estación, cuatro sondas, RFID/balanza existente y telemetría básica de dos máquinas.
-- Pilotear NODO Flota, NODO Scout, NODO Teams y la bóveda offline v2 ya implementados; medir cuota/evicción, reanudación y pérdida de frase en dispositivos de campo, y agregar análisis antimalware antes de habilitar archivos no controlados a escala.
+- Pilotear NODO Flota, NODO Scout, NODO Teams y la bóveda offline v3 ya implementados; medir preparación/expiración del paquete, sesión vencida, cuota/evicción, reanudación y pérdida de frase en dispositivos de campo, y agregar análisis antimalware antes de habilitar archivos no controlados a escala.
 - Configurar dominio, SMTP transaccional y entregabilidad; ensayar invitación, aceptación, revocación y offboarding con dos cuentas reales antes de incorporar personal del piloto.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.

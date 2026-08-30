@@ -2,11 +2,12 @@
 
 Actualizado: 2026-08-30. Esta capacidad permite continuar una recorrida rural sin convertir el navegador en una base de datos insegura. No sustituye la política de dispositivos ni garantiza disponibilidad ante pérdida, daño, falta de espacio o evicción del almacenamiento local.
 
-## Alcance v2
+## Alcance v3
 
+- Prepara un paquete cifrado de hasta 4 MB y 24 horas con el contexto mínimo necesario para volver a abrir Scout sin servidor: empresa y establecimiento activos, referencias de lotes sin geometrías ni score, responsables permitidos, recorridas abiertas, hallazgos y metadatos de evidencia.
 - Guarda borradores de hallazgos estructurados de NODO Scout: recorrida, categoría, severidad, momento, notas, punto y precisión opcionales.
 - Guarda JPEG, PNG o WebP cifrados de hasta 8 MB asociados a un hallazgo remoto o a un borrador local. Limita la cola a 12 fotos y 64 MB por usuario y rechaza una captura si llevaría el origen por encima de 90% de la cuota estimada.
-- No guarda tokens de sesión, respuestas de Supabase, teselas, partes de inteligencia ni órdenes IoT. Ningún dato privado entra al caché del service worker.
+- No guarda en el paquete economía, rodeo, maquinaria, telemetría, órdenes IoT, recomendaciones, partes de inteligencia, tokens, respuestas de Supabase, teselas ni bytes de imágenes remotas. Ningún dato privado entra al caché del service worker.
 - El usuario decide cuándo sincronizar. No existe ejecución silenciosa en segundo plano.
 - Supabase sigue siendo la autoridad final. Un borrador local no es un registro operativo hasta que la RPC lo acepta.
 
@@ -15,11 +16,20 @@ Actualizado: 2026-08-30. Esta capacidad permite continuar una recorrida rural si
 1. El usuario crea una frase local independiente de su contraseña de NODO. No se transmite ni se persiste.
 2. PBKDF2-SHA-256, 310.000 iteraciones y un salt aleatorio de 24 bytes derivan una clave AES-GCM de 256 bits no extraíble.
 3. Cada registro usa un IV aleatorio de 12 bytes. El AAD vincula usuario, organización, establecimiento, tipo, versión y UUID; para una foto separa metadatos y bytes. Mover o intercambiar ciphertext rompe su autenticación.
-4. IndexedDB sólo conserva salt, verificador cifrado, IV, ciphertext y metadatos operativos mínimos. Nombre original, descripción, hash y URL de reanudación TUS están dentro del contenido cifrado. La clave vive en memoria y se descarta al bloquear, tras 15 minutos sin actividad, al cerrar sesión o cambiar de identidad.
+4. IndexedDB sólo conserva salt, verificador cifrado, IV, ciphertext y metadatos operativos mínimos. Paquete, nombre original, descripción, hash y URL de reanudación TUS están dentro del contenido cifrado. La clave vive en memoria y se descarta al bloquear, tras 15 minutos sin actividad, al cerrar sesión o cambiar de identidad.
 5. Al activar una bóveda, un self-test ejecuta round-trip y rechazo de manipulación para JSON y bytes aleatorios antes de guardar el perfil.
-6. No hay recuperación de frase. Restablecer elimina el perfil, hallazgos y fotografías locales del usuario después de una segunda confirmación.
+6. No hay recuperación de frase. Restablecer elimina perfil, paquete, hallazgos y fotografías locales del usuario después de una segunda confirmación.
 
 AES-GCM protege confidencialidad e integridad en reposo. No protege contra XSS activo, extensiones maliciosas, malware, captura de pantalla ni acceso al dispositivo mientras la bóveda está desbloqueada. Los pilotos deben usar cifrado de disco, bloqueo de pantalla, parches, navegador administrado y mínimo privilegio.
+
+## Paquete de campo y recarga
+
+- Se prepara únicamente después de una consulta remota válida y mientras la bóveda está desbloqueada. La pantalla muestra hora de preparación, vencimiento y cantidad de recorridas abiertas.
+- Para `operator` conserva sólo recorridas asignadas al usuario; propietario, administrador y agrónomo reciben la agenda abierta que ya podían consultar. El rol `viewer` no genera paquete operativo.
+- El AAD autentica identidad, empresa, establecimiento, versión, preparación y vencimiento. Cambiar esos metadatos hace fallar la apertura.
+- El paquete vence a las 24 horas y se elimina cuando se intenta abrir vencido. Esto limita exposición y obliga a refrescar permisos y agenda antes de una nueva jornada.
+- Si Supabase o la sesión remota no están disponibles tras recargar, NODO localiza la bóveda mediante el UUID de la última identidad autenticada y exige la frase. No conserva correo ni rol en claro. Un cierre de sesión explícito elimina esa referencia.
+- El modo recuperado habilita únicamente registrar hallazgos y fotos sobre recorridas que ya estaban `in_progress`. No permite crear, iniciar, reasignar, cerrar o cancelar recorridas ni abrir módulos no incluidos. La sincronización vuelve a revalidar todo server-side.
 
 ## Contrato de sincronización
 
@@ -38,15 +48,17 @@ Antes de salir:
 
 1. Ingresar con la identidad individual y abrir Recorridas.
 2. Activar la bóveda con una frase larga que el usuario pueda recordar; no reutilizar la contraseña de NODO.
-3. Verificar que la recorrida esté asignada e iniciada y que el shell PWA abra en el dispositivo.
-4. Revisar la cuota visible y solicitar persistencia del origen si la política del dispositivo lo permite; el navegador puede negarla.
-5. Confirmar batería, reloj, geolocalización y bloqueo seguro del equipo.
+3. Verificar que la recorrida esté asignada e iniciada. Abrir Recorridas con conexión y confirmar el aviso `Paquete de campo preparado`, su vencimiento y el número esperado de recorridas.
+4. Cerrar y volver a abrir una vez con el procedimiento aprobado del dispositivo antes de abandonar cobertura.
+5. Revisar la cuota visible y solicitar persistencia del origen si la política del dispositivo lo permite; el navegador puede negarla.
+6. Confirmar batería, reloj, geolocalización y bloqueo seguro del equipo.
 
 Durante el corte:
 
-1. Registrar el hallazgo y elegir `Guardar cifrado`.
-2. Confirmar el aviso de guardado. No cerrar o borrar datos del navegador.
-3. Adjuntar la fotografía desde cámara o archivo al hallazgo local. Confirmar que el contador de fotos y MB aumentó; todavía no se presenta como evidencia remota.
+1. Si la aplicación se recarga, elegir el acceso de contingencia, ingresar la frase y comprobar empresa, establecimiento, hora y vencimiento antes de trabajar.
+2. Registrar el hallazgo y elegir `Guardar cifrado`.
+3. Confirmar el aviso de guardado. No cerrar o borrar datos del navegador.
+4. Adjuntar la fotografía desde cámara o archivo al hallazgo local. Confirmar que el contador de fotos y MB aumentó; todavía no se presenta como evidencia remota.
 
 Al recuperar red:
 
@@ -58,7 +70,7 @@ Al recuperar red:
 ## Gate previo a piloto externo
 
 - Ensayo en los modelos reales de teléfono/tablet y navegadores aprobados.
-- Corte de red, cierre/reapertura, bloqueo, frase incorrecta, cuota baja, evicción, cambio de organización y cierre de sesión.
+- Corte de red, cierre/reapertura, sesión remota vencida, bloqueo, frase incorrecta, paquete vencido/adulterado, cuota baja, evicción, cambio de organización y cierre de sesión.
 - Sincronización de un hallazgo y una foto reales de prueba controlada, corte a mitad de carga, reanudación TUS, reintento con respuesta perdida y verificación de una sola fila/objeto remotos.
 - Rechazo seguro cuando la recorrida se cerró o el responsable perdió autorización.
 - Rechazo de archivo adulterado, MIME/firma discordantes, hash incorrecto, exceso de 8 MB, cola llena y cuota insuficiente; confirmar limpieza de objetos huérfanos.

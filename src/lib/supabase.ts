@@ -16,6 +16,12 @@ export const supabase: SupabaseClient | null = isAuthConfigured
 if (import.meta.hot && supabase) import.meta.hot.data.nodoSupabase = supabase;
 
 const invitationPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const userIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OFFLINE_USER_KEY='nodo-last-authenticated-user';
+
+export function rememberOfflineIdentity(userId:string){if(typeof localStorage!=='undefined'&&userIdPattern.test(userId))localStorage.setItem(OFFLINE_USER_KEY,userId)}
+export function rememberedOfflineIdentity(){if(typeof localStorage==='undefined')return null;const value=localStorage.getItem(OFFLINE_USER_KEY);return value&&userIdPattern.test(value)?value:null}
+export function forgetOfflineIdentity(){if(typeof localStorage!=='undefined')localStorage.removeItem(OFFLINE_USER_KEY)}
 
 export function invitationIdFromUrl() {
   if (typeof window === 'undefined') return null;

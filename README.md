@@ -20,7 +20,7 @@ La visión y el MVP están documentados en [`docs/NODO_VISION.md`](docs/NODO_VIS
 - Open-Meteo: clima actual y pronóstico de siete días, validados y persistidos.
 - NODO Earth: descubrimiento de escenas Sentinel-2 L2A mediante STAC, color real fechado, mapas NDVI/NDMI y estadísticas reales por polígono desde Microsoft Planetary Computer.
 - NODO Scout: agenda multiusuario con responsables reales, reasignación auditada, recorridas por lote enlazadas a evidencia satelital o manual, hallazgos georreferenciados, fotografías privadas con hash SHA‑256 y cierre auditable.
-- NODO Field Offline v2: PWA con shell versionado y bóveda IndexedDB AES-GCM para hallazgos y fotografías sin señal; sincroniza en orden, reanuda binarios por TUS, verifica SHA-256 en cliente y servidor y mantiene APIs, tokens e imágenes privadas fuera del caché del service worker.
+- NODO Field Offline v3: PWA con paquete operativo mínimo de Scout, hallazgos y fotografías cifrados en IndexedDB; recupera una recarga sin servidor durante 24 horas, restringe acciones a captura preparada, sincroniza en orden, reanuda binarios por TUS y mantiene APIs, tokens e imágenes privadas fuera del caché del service worker.
 - Red IoT operativa: alta de dispositivos por lote, credencial de un solo uso, endpoint con token hasheado, lotes idempotentes, calidad y frescura de lectura.
 - Motor de decisiones: reglas trazables con fuente, confianza, vigencia y aprobación humana.
 - Inteligencia transversal: un parte operativo server-side cruza clima, satélite, IoT, cultivos, rodeo, maquinaria y economía; conserva el snapshot de evidencia, aplica límites de consumo y exige salida estructurada validada.

@@ -31,24 +31,24 @@ function localDateTime(offsetMinutes=0){const date=new Date(Date.now()+offsetMin
 function errorMessage(error:unknown){return error instanceof Error?error.message:typeof error==='object'&&error&&'message' in error&&typeof error.message==='string'?error.message:'No se pudo completar la operación'}
 function fileSize(bytes:number){return bytes<1024*1024?`${Math.ceil(bytes/1024)} KB`:`${(bytes/1024/1024).toFixed(1)} MB`}
 
-function EvidenceGallery({media,urls}:{media:ScoutingFindingMedia[];urls:Record<string,string>}){
+function EvidenceGallery({media,urls,offline}:{media:ScoutingFindingMedia[];urls:Record<string,string>;offline:boolean}){
   if(!media.length)return null;
   return <div className="evidenceGallery">{media.map(item=>{
     const url=urls[item.id];
     return <article key={item.id}>
-      {url?<a href={url} target="_blank" rel="noreferrer"><img src={url} alt={item.caption||'Evidencia fotográfica de campo'}/></a>:<div className="evidenceLoading"><LoaderCircle className="spin"/></div>}
+      {url?<a href={url} target="_blank" rel="noreferrer"><img src={url} alt={item.caption||'Evidencia fotográfica de campo'}/></a>:<div className="evidenceLoading">{offline?<FileImage/>:<LoaderCircle className="spin"/>}</div>}
       <div><b>{item.caption||item.original_filename}</b><span>{fileSize(item.size_bytes)} · {item.capture_source==='camera'?'cámara':'archivo'} · {new Date(item.captured_at).toLocaleString('es-AR')}</span><small>SHA‑256 {item.sha256.slice(0,12)}…</small></div>
     </article>;
   })}</div>;
 }
 
-export function ScoutPanel({data,seed,onSeedConsumed}:{data:Workspace;seed:ScoutSeed|null;onSeedConsumed:()=>void}){
+export function ScoutPanel({data,seed,onSeedConsumed,offlineMode=false}:{data:Workspace;seed:ScoutSeed|null;onSeedConsumed:()=>void;offlineMode?:boolean}){
   const createVisit=useCreateScoutingVisit();
   const transitionVisit=useTransitionScoutingVisit();
   const reassignVisit=useReassignScoutingVisit();
   const recordFinding=useRecordScoutingFinding();
   const uploadEvidence=useUploadScoutingEvidence();
-  const evidenceUrls=useScoutingEvidenceUrls(data.scoutingFindingMedia);
+  const evidenceUrls=useScoutingEvidenceUrls(offlineMode?[]:data.scoutingFindingMedia);
   const supervisory=canSupervise.has(data.organization!.role);
   const defaultAssigneeId=data.scoutingAssignees.find(member=>member.user_id===data.organization!.userId)?.user_id??data.scoutingAssignees[0]?.user_id??data.organization!.userId;
   const assignableMembers=supervisory?data.scoutingAssignees:data.scoutingAssignees.filter(member=>member.user_id===data.organization!.userId);
@@ -65,7 +65,7 @@ export function ScoutPanel({data,seed,onSeedConsumed}:{data:Workspace;seed:Scout
   const [locationState,setLocationState]=useState<{latitude:number;longitude:number;accuracy:number}|null>(null);
   const [locationError,setLocationError]=useState('');
   const [locating,setLocating]=useState(false);
-  const [connected,setConnected]=useState(()=>navigator.onLine);
+  const [browserOnline,setBrowserOnline]=useState(()=>navigator.onLine);
   const [savingOffline,setSavingOffline]=useState(false);
   const [savingOfflineMedia,setSavingOfflineMedia]=useState(false);
   const [mediaUploadProgress,setMediaUploadProgress]=useState(0);
@@ -74,6 +74,7 @@ export function ScoutPanel({data,seed,onSeedConsumed}:{data:Workspace;seed:Scout
   const [form,setForm]=useState({parcelId:data.parcels[0]?.id??'',sourceMetricId:'',title:'Recorrida de lote',objective:'',priority:'medium' as ScoutingVisit['priority'],scheduledFor:localDateTime(60),assigneeId:defaultAssigneeId});
   const [findingForm,setFindingForm]=useState({category:'crop_condition' as ScoutingFinding['category'],severity:'info' as ScoutingFinding['severity'],observedAt:localDateTime(),notes:''});
   const writable=canOperate.has(data.organization!.role);
+  const connected=browserOnline&&!offlineMode;
 
   useEffect(()=>{
     if(!seed)return;
@@ -88,7 +89,8 @@ export function ScoutPanel({data,seed,onSeedConsumed}:{data:Workspace;seed:Scout
     setFieldError('');recordFinding.reset();
   },[findingVisit]);
 
-  useEffect(()=>{const online=()=>setConnected(true);const offline=()=>setConnected(false);window.addEventListener('online',online);window.addEventListener('offline',offline);return()=>{window.removeEventListener('online',online);window.removeEventListener('offline',offline)}},[]);
+  useEffect(()=>{const online=()=>setBrowserOnline(true);const offline=()=>setBrowserOnline(false);window.addEventListener('online',online);window.addEventListener('offline',offline);return()=>{window.removeEventListener('online',online);window.removeEventListener('offline',offline)}},[]);
+  useEffect(()=>{if(offlineMode){setCreating(false);setClosing(null)}},[offlineMode]);
 
   useEffect(()=>{setMediaSelection(null);setMediaCaption('');setMediaCapturedAt(localDateTime());setMediaValidation('');setMediaUploadProgress(0);uploadEvidence.reset()},[mediaFinding]);
 
@@ -152,11 +154,11 @@ export function ScoutPanel({data,seed,onSeedConsumed}:{data:Workspace;seed:Scout
   }
 
   return <section className="scoutModule">
-    <div className="moduleToolbar"><div><small>NODO SCOUT · VERIFICACIÓN EN CAMPO</small><h2>Recorridas</h2><p>Conecta señales, responsables, hallazgos georreferenciados y cierre auditable.</p></div><button disabled={!writable||data.parcels.length===0} onClick={()=>creating?closeCreate():startManual()}>{creating?<XCircle/>:<Plus/>}{creating?'Cerrar carga':'Nueva recorrida'}</button></div>
+    <div className="moduleToolbar"><div><small>NODO SCOUT · VERIFICACIÓN EN CAMPO</small><h2>Recorridas</h2><p>{offlineMode?'Agenda cifrada preparada: sólo captura de hallazgos y fotos sobre recorridas ya iniciadas.':'Conecta señales, responsables, hallazgos georreferenciados y cierre auditable.'}</p></div><button disabled={offlineMode||!writable||data.parcels.length===0} onClick={()=>creating?closeCreate():startManual()}>{creating?<XCircle/>:<Plus/>}{offlineMode?'Agenda preparada':creating?'Cerrar carga':'Nueva recorrida'}</button></div>
 
     <div className="scoutKpis"><article><small>MIS ABIERTAS</small><strong>{myOpenVisits.length}</strong><span>{openVisits.length} abiertas en el equipo</span></article><article className={overdue?'risk':''}><small>VENCIDAS</small><strong>{overdue}</strong><span>Requieren reprogramación o inicio</span></article><article className={criticalFindings?'risk':''}><small>HALLAZGOS RELEVANTES · 30 D</small><strong>{criticalFindings}</strong><span>Severidad alta o crítica</span></article><article><small>EVIDENCIAS</small><strong>{data.scoutingFindings.length+data.scoutingFindingMedia.length}</strong><span>{data.scoutingFindings.length} observaciones · {data.scoutingFindingMedia.length} fotos</span></article></div>
 
-    <OfflineVaultPanel scope={{userId:data.organization!.userId,organizationId:data.organization!.id,establishmentId:data.establishment!.id}} onSyncDraft={draft=>recordFinding.mutateAsync({visitId:draft.visitId,category:draft.category,severity:draft.severity,observedAt:draft.observedAt,latitude:draft.latitude,longitude:draft.longitude,accuracyM:draft.accuracyM,notes:draft.notes,requestId:draft.requestId})} onSyncMedia={(draft,file,onProgress,onUploadUrl)=>uploadEvidence.mutateAsync({findingId:draft.findingId!,file,caption:draft.caption,capturedAt:draft.capturedAt,captureSource:draft.captureSource,requestId:draft.requestId,sha256:draft.sha256,resumeUrl:draft.tusUploadUrl,onProgress,onUploadUrl})}/>
+    <OfflineVaultPanel scope={{userId:data.organization!.userId,organizationId:data.organization!.id,establishmentId:data.establishment!.id}} networkAvailable={connected} onSyncDraft={draft=>recordFinding.mutateAsync({visitId:draft.visitId,category:draft.category,severity:draft.severity,observedAt:draft.observedAt,latitude:draft.latitude,longitude:draft.longitude,accuracyM:draft.accuracyM,notes:draft.notes,requestId:draft.requestId})} onSyncMedia={(draft,file,onProgress,onUploadUrl)=>uploadEvidence.mutateAsync({findingId:draft.findingId!,file,caption:draft.caption,capturedAt:draft.capturedAt,captureSource:draft.captureSource,requestId:draft.requestId,sha256:draft.sha256,resumeUrl:draft.tusUploadUrl,onProgress,onUploadUrl})}/>
     {fieldNotice&&<p className="vaultNotice fieldNotice"><ShieldCheck/>{fieldNotice}</p>}
 
     <div className="scoutFilters" aria-label="Filtrar recorridas"><span><Users/>Agenda del equipo</span><button className={visitFilter==='all'?'active':''} onClick={()=>setVisitFilter('all')}>Todas · {data.scoutingVisits.length}</button><button className={visitFilter==='mine'?'active':''} onClick={()=>setVisitFilter('mine')}>Mías · {data.scoutingVisits.filter(visit=>visit.assigned_to===data.organization!.userId).length}</button><button className={visitFilter==='unassigned'?'active':''} onClick={()=>setVisitFilter('unassigned')}>Sin responsable · {data.scoutingVisits.filter(visit=>!visit.assigned_to).length}</button></div>
@@ -179,12 +181,12 @@ export function ScoutPanel({data,seed,onSeedConsumed}:{data:Workspace;seed:Scout
       const canOperateVisit=supervisory||visit.assigned_to===data.organization!.userId;
       const open=visit.status==='planned'||visit.status==='in_progress';
       return <article key={visit.id} className={`scoutCard priority-${visit.priority} ${overdueVisit?'overdue':''}`}>
-        <div className="scoutIdentity"><span className={`scoutStatus ${visit.status}`}>{visitStatusLabels[visit.status]}</span><small>{priorityLabels[visit.priority]}{overdueVisit?' · vencida':''}</small><h3>{visit.title}</h3><p>{parcel?.name??'Lote histórico'} · {new Date(visit.scheduled_for).toLocaleString('es-AR')}</p><div className="visitAssignee"><UserRound/><span><b>{assignee?.display_name??'Responsable no disponible'}</b><small>{assignee?memberRoleLabels[assignee.member_role]:'Registro histórico'}</small></span>{supervisory&&open&&<select aria-label={`Responsable de ${visit.title}`} value={visit.assigned_to??''} disabled={reassignVisit.isPending} onChange={event=>reassignVisit.mutate({visitId:visit.id,assignedUserId:event.target.value})}>{data.scoutingAssignees.map(member=><option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select>}</div></div>
+        <div className="scoutIdentity"><span className={`scoutStatus ${visit.status}`}>{visitStatusLabels[visit.status]}</span><small>{priorityLabels[visit.priority]}{overdueVisit?' · vencida':''}</small><h3>{visit.title}</h3><p>{parcel?.name??'Lote histórico'} · {new Date(visit.scheduled_for).toLocaleString('es-AR')}</p><div className="visitAssignee"><UserRound/><span><b>{assignee?.display_name??'Responsable no disponible'}</b><small>{assignee?memberRoleLabels[assignee.member_role]:'Registro histórico'}</small></span>{!offlineMode&&supervisory&&open&&<select aria-label={`Responsable de ${visit.title}`} value={visit.assigned_to??''} disabled={reassignVisit.isPending} onChange={event=>reassignVisit.mutate({visitId:visit.id,assignedUserId:event.target.value})}>{data.scoutingAssignees.map(member=><option key={member.user_id} value={member.user_id}>{member.display_name}</option>)}</select>}</div></div>
         <div className="scoutSource"><span><Flag/><b>{visit.source_type==='satellite_ndvi'?'NDVI':visit.source_type==='satellite_ndmi'?'NDMI':'Origen manual'}</b></span>{mean!==null&&<strong>{mean.toFixed(3)}</strong>}<small>{visit.objective||'Sin objetivo adicional'}</small></div>
-        <div className="scoutActions">{canOperateVisit&&visit.status==='planned'&&<button disabled={transitionVisit.isPending} onClick={()=>transition(visit.id,'in_progress')}><Navigation/>Iniciar</button>}{canOperateVisit&&visit.status==='in_progress'&&<button onClick={()=>setFindingVisit(visit.id)}><MapPin/>Hallazgo</button>}{canOperateVisit&&visit.status==='in_progress'&&<button className="complete" onClick={()=>{setClosing({visitId:visit.id,status:'completed'});setClosingSummary('')}}><CheckCircle2/>Completar</button>}{canOperateVisit&&open&&<button className="cancel" onClick={()=>{setClosing({visitId:visit.id,status:'cancelled'});setClosingSummary('')}}><XCircle/>Cancelar</button>}{!canOperateVisit&&open&&<span className="visitReadOnly"><ShieldCheck/>Sólo el responsable o un supervisor puede intervenir</span>}</div>
+        <div className="scoutActions">{!offlineMode&&canOperateVisit&&visit.status==='planned'&&<button disabled={transitionVisit.isPending} onClick={()=>transition(visit.id,'in_progress')}><Navigation/>Iniciar</button>}{canOperateVisit&&visit.status==='in_progress'&&<button onClick={()=>setFindingVisit(visit.id)}><MapPin/>Hallazgo</button>}{!offlineMode&&canOperateVisit&&visit.status==='in_progress'&&<button className="complete" onClick={()=>{setClosing({visitId:visit.id,status:'completed'});setClosingSummary('')}}><CheckCircle2/>Completar</button>}{!offlineMode&&canOperateVisit&&open&&<button className="cancel" onClick={()=>{setClosing({visitId:visit.id,status:'cancelled'});setClosingSummary('')}}><XCircle/>Cancelar</button>}{offlineMode&&visit.status==='planned'&&<span className="visitReadOnly"><ShieldCheck/>Debe iniciarse con conexión antes de salir</span>}{!canOperateVisit&&open&&<span className="visitReadOnly"><ShieldCheck/>Sólo el responsable o un supervisor puede intervenir</span>}</div>
         {findings.length>0&&<div className="findingList">{findings.map(finding=>{
           const media=mediaByFinding[finding.id]??[];
-          return <div key={finding.id} className={`findingRecord severity-${finding.severity}`}><div className="findingDetail"><span><b>{categoryLabels[finding.category]}</b><small>{severityLabels[finding.severity]} · {new Date(finding.observed_at).toLocaleString('es-AR')}</small></span><p>{finding.notes}</p><div className="findingLinks">{finding.latitude!==null&&finding.longitude!==null&&<a href={`https://www.openstreetmap.org/?mlat=${finding.latitude}&mlon=${finding.longitude}#map=18/${finding.latitude}/${finding.longitude}`} target="_blank" rel="noreferrer"><MapPin/>Ver punto · ±{Math.round(finding.accuracy_m??0)} m</a>}{visit.status==='in_progress'&&writable&&canOperateVisit&&<button onClick={()=>setMediaFinding(finding.id)}><Camera/>Adjuntar foto</button>}</div></div><EvidenceGallery media={media} urls={evidenceUrls.data??{}}/></div>;
+          return <div key={finding.id} className={`findingRecord severity-${finding.severity}`}><div className="findingDetail"><span><b>{categoryLabels[finding.category]}</b><small>{severityLabels[finding.severity]} · {new Date(finding.observed_at).toLocaleString('es-AR')}</small></span><p>{finding.notes}</p><div className="findingLinks">{finding.latitude!==null&&finding.longitude!==null&&<a href={`https://www.openstreetmap.org/?mlat=${finding.latitude}&mlon=${finding.longitude}#map=18/${finding.latitude}/${finding.longitude}`} target="_blank" rel="noreferrer"><MapPin/>Ver punto · ±{Math.round(finding.accuracy_m??0)} m</a>}{visit.status==='in_progress'&&writable&&canOperateVisit&&<button onClick={()=>setMediaFinding(finding.id)}><Camera/>Adjuntar foto</button>}</div></div><EvidenceGallery media={media} urls={evidenceUrls.data??{}} offline={offlineMode}/></div>;
         })}</div>}
         {visit.summary&&<div className="scoutSummary"><b>CIERRE</b><span>{visit.summary}</span></div>}
       </article>;

@@ -1,10 +1,10 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AlertCircle, Eye, EyeOff, LoaderCircle, LockKeyhole } from 'lucide-react';
-import { authRedirectUrl, isAuthConfigured, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
+import { authRedirectUrl, isAuthConfigured, rememberedOfflineIdentity, rememberOfflineIdentity, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
 import { lockOfflineVault } from '../lib/offlineVault';
 
-export function AuthGate({ children }: { children: ReactNode }) {
+export function AuthGate({ children }: { children: (identity:{userId:string;sessionBacked:boolean})=>ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(isAuthConfigured);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -13,19 +13,25 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'ok'; text: string } | null>(null);
+  const [online,setOnline]=useState(()=>navigator.onLine);
+  const [authUnavailable,setAuthUnavailable]=useState(false);
 
   useEffect(() => {
     if (!supabase) return;
     void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) setMessage({ tone: 'error', text: error.message });
+      if (error) {setMessage({ tone: 'error', text: error.message });setAuthUnavailable(true)}
+      if(data.session)rememberOfflineIdentity(data.session.user.id);
       setSession(data.session); setLoading(false); scrubAuthCallbackUrl();
     });
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if(next){rememberOfflineIdentity(next.user.id);setAuthUnavailable(false)}
       setSession(next); setLoading(false);
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') scrubAuthCallbackUrl();
       if (event === 'SIGNED_OUT') lockOfflineVault('session_changed');
     });
-    return () => data.subscription.unsubscribe();
+    const connected=()=>setOnline(true);const disconnected=()=>setOnline(false);
+    window.addEventListener('online',connected);window.addEventListener('offline',disconnected);
+    return () => {data.subscription.unsubscribe();window.removeEventListener('online',connected);window.removeEventListener('offline',disconnected)};
   }, []);
 
   async function submit(event: FormEvent) {
@@ -51,7 +57,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (loading) return <div className="authLoading"><LoaderCircle className="spin"/><span>Verificando sesión segura…</span></div>;
-  if (session) return <>{children}</>;
+  if (session) return <>{children({userId:session.user.id,sessionBacked:true})}</>;
+  const offlineIdentity=(!online||authUnavailable)?rememberedOfflineIdentity():null;
+  if(offlineIdentity)return <>{children({userId:offlineIdentity,sessionBacked:false})}</>;
 
   return <div className="authPage"><section className="authStory"><div className="authBrand"><ActivityLogo/></div><div><small>INTELIGENCIA OPERATIVA AGROPECUARIA</small><h1>Tu campo.<br/>Conectado y predecible.</h1><p>Satélites, sensores y operaciones convertidos en decisiones claras para producir mejor.</p></div><footer>Los datos de cada establecimiento permanecen aislados y bajo control de su organización.</footer></section><section className="authPanel"><form onSubmit={submit}><div className="authMark"><LockKeyhole/></div><h2>{mode === 'login' ? 'Ingresá a NODO' : 'Creá tu cuenta'}</h2><p>{mode === 'login' ? 'Accedé al gemelo digital de tu establecimiento.' : 'Comenzá la configuración segura de tu operación.'}</p>
     {!isAuthConfigured && <div className="authMessage error"><AlertCircle/>Falta configurar Supabase. Copiá <b>.env.example</b> a <b>.env.local</b> y completá las credenciales públicas.</div>}

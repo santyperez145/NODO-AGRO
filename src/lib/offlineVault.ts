@@ -1,3 +1,5 @@
+import type { Establishment, OrganizationMembership, Parcel, ScoutingAssignee, ScoutingFinding, ScoutingFindingMedia, ScoutingVisit, Workspace } from './workspace';
+
 export type OfflineVaultStatus='checking'|'unsupported'|'unconfigured'|'locked'|'unlocked';
 
 export type OfflineVaultSnapshot={
@@ -29,6 +31,24 @@ export type OfflineScoutingFindingDraft={
 };
 
 export type OfflineDraftScope={userId:string;organizationId:string;establishmentId:string};
+
+export type OfflineFieldPackagePayload={
+  schemaVersion:1;
+  userId:string;
+  organizationId:string;
+  establishmentId:string;
+  preparedAt:string;
+  expiresAt:string;
+  organization:OrganizationMembership;
+  establishment:Establishment;
+  parcels:Parcel[];
+  scoutingAssignees:ScoutingAssignee[];
+  scoutingVisits:ScoutingVisit[];
+  scoutingFindings:ScoutingFinding[];
+  scoutingFindingMedia:ScoutingFindingMedia[];
+};
+
+export type OfflineFieldPackageMeta={preparedAt:string;expiresAt:string;visitCount:number;findingCount:number;mediaCount:number};
 
 export type OfflineScoutingMediaDraft={
   schemaVersion:1;
@@ -114,21 +134,38 @@ type EncryptedMediaRecord={
   fileCiphertext:ArrayBuffer;
 };
 
+type EncryptedFieldPackageRecord={
+  id:string;
+  userId:string;
+  organizationId:string;
+  establishmentId:string;
+  kind:'field_package';
+  version:1;
+  preparedAt:string;
+  expiresAt:string;
+  iv:string;
+  ciphertext:string;
+};
+
 const DB_NAME='nodo-field-vault-v1';
-const DB_VERSION=2;
+const DB_VERSION=3;
 const PROFILE_STORE='profiles';
 const DRAFT_STORE='drafts';
 const MEDIA_STORE='media';
+const FIELD_PACKAGE_STORE='field_packages';
 const PBKDF2_ITERATIONS=310_000;
 const AUTO_LOCK_MS=15*60_000;
 const VERIFIER_MARKER='NODO_FIELD_OFFLINE_V1';
 const MAX_MEDIA_BYTES=8*1024*1024;
 const MAX_MEDIA_ITEMS=12;
 const MAX_MEDIA_TOTAL_BYTES=64*1024*1024;
+const FIELD_PACKAGE_TTL_MS=24*60*60_000;
+const MAX_FIELD_PACKAGE_BYTES=4*1024*1024;
 const UUID_PATTERN=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FINDING_CATEGORIES=new Set<OfflineScoutingFindingDraft['category']>(['crop_condition','pest_signal','water','soil','infrastructure','other']);
 const FINDING_SEVERITIES=new Set<OfflineScoutingFindingDraft['severity']>(['info','low','medium','high','critical']);
 const MEDIA_TYPES=new Set<OfflineScoutingMediaDraft['mimeType']>(['image/jpeg','image/png','image/webp']);
+const FIELD_ROLES=new Set<OrganizationMembership['role']>(['owner','admin','agronomist','operator']);
 const encoder=new TextEncoder();
 const decoder=new TextDecoder();
 
@@ -171,9 +208,37 @@ function validMediaPayload(value:unknown,recordId:string):value is OfflineScouti
     &&(draft.tusUploadUrl===null||(typeof draft.tusUploadUrl==='string'&&draft.tusUploadUrl.startsWith('https://')&&draft.tusUploadUrl.length<=2048))
     &&typeof draft.savedAt==='string'&&Number.isFinite(Date.parse(draft.savedAt));
 }
+function objectValue(value:unknown):value is Record<string,unknown>{return typeof value==='object'&&value!==null&&!Array.isArray(value)}
+function boundedString(value:unknown,min:number,max:number){return typeof value==='string'&&value.length>=min&&value.length<=max}
+function validIso(value:unknown){return typeof value==='string'&&Number.isFinite(Date.parse(value))}
+function uniqueUuid(value:string,seen:Set<string>){if(!UUID_PATTERN.test(value)||seen.has(value))return false;seen.add(value);return true}
+function boundedJsonObject(value:unknown,maxBytes:number){if(!objectValue(value))return false;try{return encoder.encode(JSON.stringify(value)).byteLength<=maxBytes}catch{return false}}
+function validFieldPackagePayload(value:unknown,record:EncryptedFieldPackageRecord):value is OfflineFieldPackagePayload{
+  if(!objectValue(value))return false;
+  const field=value as Partial<OfflineFieldPackagePayload>;
+  if(field.schemaVersion!==1||field.userId!==record.userId||field.organizationId!==record.organizationId||field.establishmentId!==record.establishmentId||field.preparedAt!==record.preparedAt||field.expiresAt!==record.expiresAt||!validIso(field.preparedAt)||!validIso(field.expiresAt))return false;
+  const prepared=Date.parse(field.preparedAt);const expires=Date.parse(field.expiresAt);
+  if(expires<=prepared||expires-prepared>FIELD_PACKAGE_TTL_MS+60_000)return false;
+  const organization=field.organization;const establishment=field.establishment;
+  if(!organization||organization.id!==record.organizationId||organization.userId!==record.userId||!UUID_PATTERN.test(organization.id)||!FIELD_ROLES.has(organization.role)||!boundedString(organization.name,1,180))return false;
+  if(!establishment||establishment.id!==record.establishmentId||establishment.organization_id!==record.organizationId||!UUID_PATTERN.test(establishment.id)||!boundedString(establishment.name,1,180)||typeof establishment.latitude!=='number'||!nullableFinite(establishment.latitude,-90,90)||typeof establishment.longitude!=='number'||!nullableFinite(establishment.longitude,-180,180)||!nullableFinite(establishment.area_hectares,0,1_000_000_000)||!boundedString(establishment.base_currency,3,3)||!boundedString(establishment.country_code,2,2)||!boundedString(establishment.locale,2,32)||!boundedString(establishment.timezone,1,80)||(establishment.unit_system!=='metric'&&establishment.unit_system!=='imperial'))return false;
+  if(!Array.isArray(field.parcels)||field.parcels.length>500||!Array.isArray(field.scoutingAssignees)||field.scoutingAssignees.length>500||!Array.isArray(field.scoutingVisits)||field.scoutingVisits.length>200||!Array.isArray(field.scoutingFindings)||field.scoutingFindings.length>500||!Array.isArray(field.scoutingFindingMedia)||field.scoutingFindingMedia.length>500)return false;
+  const parcels=field.parcels;const parcelIds=new Set<string>();
+  if(!parcels.every(parcel=>uniqueUuid(parcel.id,parcelIds)&&boundedString(parcel.name,1,180)&&boundedString(parcel.use,1,100)&&(parcel.crop===null||boundedString(parcel.crop,1,120))&&Number.isFinite(parcel.area_hectares)&&parcel.area_hectares>=0&&parcel.area_hectares<=1_000_000_000&&parcel.health_score===null&&parcel.boundary_geojson===null))return false;
+  const assigneeIds=new Set<string>();
+  if(!field.scoutingAssignees.every(member=>uniqueUuid(member.user_id,assigneeIds)&&boundedString(member.display_name,1,180)&&['owner','admin','agronomist','operator'].includes(member.member_role)&&(organization.role!=='operator'||member.user_id===record.userId)))return false;
+  const visitIds=new Set<string>();const visitParcels=new Map<string,string>();
+  if(!field.scoutingVisits.every(visit=>{const valid=uniqueUuid(visit.id,visitIds)&&parcelIds.has(visit.parcel_id)&&['manual','satellite_ndvi','satellite_ndmi','weather','iot'].includes(visit.source_type)&&(visit.source_metric_id===null||UUID_PATTERN.test(visit.source_metric_id))&&boundedJsonObject(visit.source_snapshot,8192)&&boundedString(visit.title,1,160)&&(visit.objective===null||boundedString(visit.objective,0,1500))&&['low','medium','high','critical'].includes(visit.priority)&&['planned','in_progress'].includes(visit.status)&&validIso(visit.scheduled_for)&&(visit.assigned_to===null||UUID_PATTERN.test(visit.assigned_to))&&(organization.role!=='operator'||visit.assigned_to===record.userId)&&(visit.summary===null||boundedString(visit.summary,0,1500))&&(visit.started_at===null||validIso(visit.started_at))&&visit.completed_at===null&&visit.cancelled_at===null&&Number.isInteger(visit.lock_version)&&validIso(visit.created_at)&&validIso(visit.updated_at);if(valid)visitParcels.set(visit.id,visit.parcel_id);return valid}))return false;
+  const findingIds=new Set<string>();const findingVisits=new Map<string,string>();
+  if(!field.scoutingFindings.every(finding=>{const valid=uniqueUuid(finding.id,findingIds)&&visitParcels.get(finding.visit_id)===finding.parcel_id&&FINDING_CATEGORIES.has(finding.category)&&FINDING_SEVERITIES.has(finding.severity)&&validIso(finding.observed_at)&&nullableFinite(finding.latitude,-90,90)&&nullableFinite(finding.longitude,-180,180)&&nullableFinite(finding.accuracy_m,0,100_000)&&boundedString(finding.notes,1,2000)&&validIso(finding.created_at);if(valid)findingVisits.set(finding.id,finding.visit_id);return valid}))return false;
+  const mediaIds=new Set<string>();
+  if(!field.scoutingFindingMedia.every(media=>uniqueUuid(media.id,mediaIds)&&findingVisits.get(media.finding_id)===media.visit_id&&boundedString(media.object_path,1,1024)&&media.object_path.startsWith(`${record.organizationId}/${record.establishmentId}/`)&&boundedString(media.original_filename,1,180)&&MEDIA_TYPES.has(media.mime_type)&&Number.isInteger(media.size_bytes)&&media.size_bytes>=1&&media.size_bytes<=MAX_MEDIA_BYTES&&/^[0-9a-f]{64}$/.test(media.sha256)&&(media.capture_source==='camera'||media.capture_source==='library')&&validIso(media.captured_at)&&(media.caption===null||boundedString(media.caption,0,500))&&validIso(media.created_at)))return false;
+  return true;
+}
 function verifierAad(userId:string){return encoder.encode(`${VERIFIER_MARKER}|${userId}|1`)}
 function draftAad(record:Pick<EncryptedDraftRecord,'id'|'userId'|'organizationId'|'establishmentId'|'kind'|'version'>){return encoder.encode(`${record.userId}|${record.organizationId}|${record.establishmentId}|${record.kind}|${record.id}|${record.version}`)}
 function mediaAad(record:Pick<EncryptedMediaRecord,'id'|'userId'|'organizationId'|'establishmentId'|'kind'|'version'>,part:'metadata'|'file'){return encoder.encode(`${record.userId}|${record.organizationId}|${record.establishmentId}|${record.kind}|${record.id}|${record.version}|${part}`)}
+function fieldPackageAad(record:Pick<EncryptedFieldPackageRecord,'id'|'userId'|'organizationId'|'establishmentId'|'kind'|'version'|'preparedAt'|'expiresAt'>){return encoder.encode(`${record.userId}|${record.organizationId}|${record.establishmentId}|${record.kind}|${record.id}|${record.version}|${record.preparedAt}|${record.expiresAt}`)}
 
 function requestResult<T>(request:IDBRequest<T>){return new Promise<T>((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error??new Error('No se pudo acceder al almacenamiento local'))})}
 function transactionDone(transaction:IDBTransaction){return new Promise<void>((resolve,reject)=>{transaction.oncomplete=()=>resolve();transaction.onerror=()=>reject(transaction.error??new Error('Falló la transacción local'));transaction.onabort=()=>reject(transaction.error??new Error('La transacción local fue cancelada'))})}
@@ -193,6 +258,10 @@ function openDatabase(){
         const media=database.createObjectStore(MEDIA_STORE,{keyPath:'id'});
         media.createIndex('userId','userId',{unique:false});
       }
+      if(!database.objectStoreNames.contains(FIELD_PACKAGE_STORE)){
+        const packages=database.createObjectStore(FIELD_PACKAGE_STORE,{keyPath:'id'});
+        packages.createIndex('userId','userId',{unique:false});
+      }
     };
     request.onsuccess=()=>resolve(request.result);
     request.onerror=()=>reject(request.error??new Error('No se pudo abrir la bóveda offline'));
@@ -203,6 +272,7 @@ function openDatabase(){
 async function getProfile(userId:string){const database=await openDatabase();try{return await requestResult(database.transaction(PROFILE_STORE).objectStore(PROFILE_STORE).get(userId)) as VaultProfile|undefined}finally{database.close()}}
 async function getDrafts(userId:string){const database=await openDatabase();try{return await requestResult(database.transaction(DRAFT_STORE).objectStore(DRAFT_STORE).index('userId').getAll(userId)) as EncryptedDraftRecord[]}finally{database.close()}}
 async function getMediaRecords(userId:string){const database=await openDatabase();try{return await requestResult(database.transaction(MEDIA_STORE).objectStore(MEDIA_STORE).index('userId').getAll(userId)) as EncryptedMediaRecord[]}finally{database.close()}}
+async function getFieldPackageRecords(userId:string){const database=await openDatabase();try{return await requestResult(database.transaction(FIELD_PACKAGE_STORE).objectStore(FIELD_PACKAGE_STORE).index('userId').getAll(userId)) as EncryptedFieldPackageRecord[]}finally{database.close()}}
 
 async function vaultMetrics(userId:string){
   const [drafts,media]=await Promise.all([getDrafts(userId),getMediaRecords(userId)]);
@@ -244,6 +314,8 @@ async function verifyBinaryCryptoRuntime(key:CryptoKey,userId:string){
   const sample=randomBytes(1024);const aad=encoder.encode(`vault-binary-self-test|${userId}`);const sealed=await encryptBytes(key,asBuffer(sample),aad);const opened=new Uint8Array(await decryptBytes(key,sealed.iv,sealed.ciphertext,aad));
   if(!sample.every((value,index)=>opened[index]===value))throw new Error('El navegador no superó la verificación criptográfica binaria');
   const tampered=new Uint8Array(sealed.ciphertext.slice(0));tampered[0]^=1;let rejected=false;try{await decryptBytes(key,sealed.iv,asBuffer(tampered),aad)}catch{rejected=true}if(!rejected)throw new Error('El navegador no rechazó contenido binario alterado');
+  const preparedAt=new Date().toISOString();const packageRecord:EncryptedFieldPackageRecord={id:`${userId}|${userId}|${userId}`,userId,organizationId:userId,establishmentId:userId,kind:'field_package',version:1,preparedAt,expiresAt:new Date(Date.parse(preparedAt)+FIELD_PACKAGE_TTL_MS).toISOString(),iv:'',ciphertext:''};
+  const packageSealed=await encrypt(key,{marker:'field-package'},fieldPackageAad(packageRecord));const packageOpened=await decrypt<{marker:string}>(key,packageSealed.iv,packageSealed.ciphertext,fieldPackageAad(packageRecord));if(packageOpened.marker!=='field-package')throw new Error('El navegador no superó la verificación del paquete de campo');let packageTamperRejected=false;try{await decrypt(key,packageSealed.iv,packageSealed.ciphertext,fieldPackageAad({...packageRecord,expiresAt:new Date(Date.parse(packageRecord.expiresAt)+1_000).toISOString()}))}catch{packageTamperRejected=true}if(!packageTamperRejected)throw new Error('El navegador no rechazó metadatos alterados del paquete de campo');
 }
 
 function scheduleAutoLock(){
@@ -496,15 +568,62 @@ export async function markOfflineMediaFailure(userId:string,id:string,error:unkn
   try{const transaction=database.transaction(MEDIA_STORE,'readwrite');const store=transaction.objectStore(MEDIA_STORE);const record=await requestResult(store.get(id)) as EncryptedMediaRecord|undefined;if(!record||record.userId!==userId)throw new Error('La foto no pertenece a la sesión activa');const message=(error instanceof Error?error.message:typeof error==='object'&&error&&'message' in error&&typeof error.message==='string'?error.message:'Error no identificado').slice(0,300);store.put({...record,attempts:record.attempts+1,lastError:message,updatedAt:new Date().toISOString()});await transactionDone(transaction)}finally{database.close()}
 }
 
+function fieldPackageId(scope:OfflineDraftScope){return`${scope.userId}|${scope.organizationId}|${scope.establishmentId}`}
+
+export async function saveOfflineFieldPackage(scope:OfflineDraftScope,workspace:Workspace):Promise<OfflineFieldPackageMeta>{
+  const key=requireUnlocked(scope.userId);
+  if(!workspace.organization||!workspace.establishment||workspace.organization.id!==scope.organizationId||workspace.organization.userId!==scope.userId||workspace.establishment.id!==scope.establishmentId||workspace.establishment.organization_id!==scope.organizationId)throw new Error('El paquete de campo no coincide con la operación activa');
+  if(!FIELD_ROLES.has(workspace.organization.role))throw new Error('Este rol no puede preparar trabajo operativo sin conexión');
+  const visits=workspace.scoutingVisits.filter(visit=>(visit.status==='planned'||visit.status==='in_progress')&&(workspace.organization!.role!=='operator'||visit.assigned_to===scope.userId));
+  const visitIds=new Set(visits.map(visit=>visit.id));
+  const parcelIds=new Set(visits.map(visit=>visit.parcel_id));
+  const findings=workspace.scoutingFindings.filter(finding=>visitIds.has(finding.visit_id));
+  const findingIds=new Set(findings.map(finding=>finding.id));
+  const preparedAt=new Date().toISOString();
+  const payload:OfflineFieldPackagePayload={
+    schemaVersion:1,userId:scope.userId,organizationId:scope.organizationId,establishmentId:scope.establishmentId,preparedAt,expiresAt:new Date(Date.parse(preparedAt)+FIELD_PACKAGE_TTL_MS).toISOString(),
+    organization:{...workspace.organization},establishment:{...workspace.establishment},parcels:workspace.parcels.filter(parcel=>parcelIds.has(parcel.id)).map(parcel=>({...parcel,health_score:null,boundary_geojson:null})),
+    scoutingAssignees:workspace.organization.role==='operator'?workspace.scoutingAssignees.filter(member=>member.user_id===scope.userId):workspace.scoutingAssignees,
+    scoutingVisits:visits,scoutingFindings:findings,scoutingFindingMedia:workspace.scoutingFindingMedia.filter(media=>findingIds.has(media.finding_id)),
+  };
+  const recordIdentity:EncryptedFieldPackageRecord={id:fieldPackageId(scope),userId:scope.userId,organizationId:scope.organizationId,establishmentId:scope.establishmentId,kind:'field_package',version:1,preparedAt:payload.preparedAt,expiresAt:payload.expiresAt,iv:'',ciphertext:''};
+  if(!validFieldPackagePayload(payload,recordIdentity))throw new Error('Los datos remotos no cumplen el contrato mínimo del paquete de campo');
+  if(new Blob([JSON.stringify(payload)]).size>MAX_FIELD_PACKAGE_BYTES)throw new Error('El paquete de campo supera 4 MB. Cerrá o archivá recorridas antes de prepararlo.');
+  const protectedPayload=await encrypt(key,payload,fieldPackageAad(recordIdentity));
+  const record={...recordIdentity,...protectedPayload};
+  const database=await openDatabase();
+  try{const transaction=database.transaction(FIELD_PACKAGE_STORE,'readwrite');transaction.objectStore(FIELD_PACKAGE_STORE).put(record);await transactionDone(transaction)}finally{database.close()}
+  return{preparedAt:payload.preparedAt,expiresAt:payload.expiresAt,visitCount:visits.length,findingCount:findings.length,mediaCount:payload.scoutingFindingMedia.length};
+}
+
+async function deleteFieldPackageRecord(id:string){const database=await openDatabase();try{const transaction=database.transaction(FIELD_PACKAGE_STORE,'readwrite');transaction.objectStore(FIELD_PACKAGE_STORE).delete(id);await transactionDone(transaction)}finally{database.close()}}
+
+export async function loadOfflineFieldPackage(userId:string,organizationId?:string|null){
+  const key=requireUnlocked(userId);
+  const records=(await getFieldPackageRecords(userId)).filter(record=>!organizationId||record.organizationId===organizationId).sort((a,b)=>b.preparedAt.localeCompare(a.preparedAt));
+  const record=records[0];
+  if(!record)throw new Error(organizationId?'No hay un paquete de campo preparado para la empresa seleccionada. Conectate, desbloqueá la bóveda y abrí Recorridas antes de salir.':'No hay un paquete de campo preparado en este dispositivo.');
+  if(!validIso(record.expiresAt)||Date.parse(record.expiresAt)<=Date.now()){await deleteFieldPackageRecord(record.id);throw new Error('El paquete de campo venció y fue eliminado. Conectate para preparar uno nuevo con permisos y recorridas actuales.');}
+  let payload:unknown;
+  try{payload=await decrypt(key,record.iv,record.ciphertext,fieldPackageAad(record))}catch{throw new Error('No se pudo autenticar el paquete de campo cifrado. No se abrió ningún dato.');}
+  if(!validFieldPackagePayload(payload,record))throw new Error('El paquete de campo no cumple el contrato seguro actual. Conectate para regenerarlo.');
+  return payload;
+}
+
+export function offlineFieldPackageToWorkspace(field:OfflineFieldPackagePayload):Workspace{
+  return{organizations:[field.organization],organization:field.organization,establishment:field.establishment,parcels:field.parcels,devices:[],sensorReadings:[],deviceTwins:[],deviceCommands:[],weather:null,satellite:null,satelliteMetrics:[],satelliteAnalysisRuns:[],scoutingVisits:field.scoutingVisits,scoutingVisitEvents:[],scoutingAssignees:field.scoutingAssignees,scoutingFindings:field.scoutingFindings,scoutingFindingMedia:field.scoutingFindingMedia,recommendations:[],livestockGroups:[],livestockEvents:[],machineAssets:[],machineEvents:[],maintenanceWorkOrders:[],maintenanceWorkOrderEvents:[],financialEntries:[],operationalSummary:null,latestAiAnalysis:null};
+}
+
 export async function resetOfflineVault(userId:string){
   if(snapshot.userId!==userId)throw new Error('La bóveda no pertenece a la sesión activa');
   const database=await openDatabase();
   try{
-    const transaction=database.transaction([PROFILE_STORE,DRAFT_STORE,MEDIA_STORE],'readwrite');
+    const transaction=database.transaction([PROFILE_STORE,DRAFT_STORE,MEDIA_STORE,FIELD_PACKAGE_STORE],'readwrite');
     const draftStore=transaction.objectStore(DRAFT_STORE);
     const mediaStore=transaction.objectStore(MEDIA_STORE);
-    const [records,mediaRecords]=await Promise.all([requestResult(draftStore.index('userId').getAllKeys(userId)),requestResult(mediaStore.index('userId').getAllKeys(userId))]);
-    records.forEach(key=>draftStore.delete(key));mediaRecords.forEach(key=>mediaStore.delete(key));
+    const packageStore=transaction.objectStore(FIELD_PACKAGE_STORE);
+    const [records,mediaRecords,packageRecords]=await Promise.all([requestResult(draftStore.index('userId').getAllKeys(userId)),requestResult(mediaStore.index('userId').getAllKeys(userId)),requestResult(packageStore.index('userId').getAllKeys(userId))]);
+    records.forEach(key=>draftStore.delete(key));mediaRecords.forEach(key=>mediaStore.delete(key));packageRecords.forEach(key=>packageStore.delete(key));
     transaction.objectStore(PROFILE_STORE).delete(userId);
     await transactionDone(transaction);
   }finally{database.close()}
@@ -524,5 +643,6 @@ export async function runOfflineVaultCryptoSelfTest(){
   try{await decrypt(key,sealed.iv,bytesToBase64(tampered),aad)}catch{tamperRejected=true}
   const binary=randomBytes(1024);const binarySealed=await encryptBytes(key,asBuffer(binary),encoder.encode(`binary|${userId}`));const binaryOpened=new Uint8Array(await decryptBytes(key,binarySealed.iv,binarySealed.ciphertext,encoder.encode(`binary|${userId}`)));
   const binaryTampered=new Uint8Array(binarySealed.ciphertext.slice(0));binaryTampered[0]^=1;let binaryTamperRejected=false;try{await decryptBytes(key,binarySealed.iv,asBuffer(binaryTampered),encoder.encode(`binary|${userId}`))}catch{binaryTamperRejected=true}
-  return{roundTrip:opened.marker===VERIFIER_MARKER&&opened.userId===userId,tamperRejected,binaryRoundTrip:binary.every((value,index)=>binaryOpened[index]===value),binaryTamperRejected};
+  const preparedAt=new Date().toISOString();const packageRecord:EncryptedFieldPackageRecord={id:`${userId}|${userId}|${userId}`,userId,organizationId:userId,establishmentId:userId,kind:'field_package',version:1,preparedAt,expiresAt:new Date(Date.parse(preparedAt)+FIELD_PACKAGE_TTL_MS).toISOString(),iv:'',ciphertext:''};const packageSealed=await encrypt(key,{marker:'field-package'},fieldPackageAad(packageRecord));const packageOpened=await decrypt<{marker:string}>(key,packageSealed.iv,packageSealed.ciphertext,fieldPackageAad(packageRecord));let packageAadTamperRejected=false;try{await decrypt(key,packageSealed.iv,packageSealed.ciphertext,fieldPackageAad({...packageRecord,expiresAt:new Date(Date.parse(packageRecord.expiresAt)+1_000).toISOString()}))}catch{packageAadTamperRejected=true}
+  return{roundTrip:opened.marker===VERIFIER_MARKER&&opened.userId===userId,tamperRejected,binaryRoundTrip:binary.every((value,index)=>binaryOpened[index]===value),binaryTamperRejected,packageRoundTrip:packageOpened.marker==='field-package',packageAadTamperRejected};
 }
