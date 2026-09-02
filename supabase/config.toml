@@ -402,6 +402,9 @@ verify_jwt = true
 [functions.scouting-evidence]
 verify_jwt = true
 
+[functions.terrain-relief]
+verify_jwt = true
+
 [functions.team-admin]
 verify_jwt = true
 

@@ -70,11 +70,18 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 - `blocked` no adjunta metadatos. `unknown` declara catálogo incompleto. No se habilitan archivos arbitrarios.
 - El Parte y Scout muestran el veredicto; no se afirma antivirus certificado ni autenticidad visual.
 
+## NODO Terrain implementado
+
+- Copernicus DEM GLO-30 vía Planetary Computer: DSM ~30 m, EGM2008, licencia CSCDA visible.
+- LE90ABS media publicada ≈ 1,92 m (sin Antártida/Groenlandia); se declara como evidencia de manual, no como cota local.
+- Hillshade del mosaico + min/media/máx/relieve por lote. Algoritmo `cop-dem-glo-30-relief-v1`.
+- No es malla 3D, no modela escurrimiento y no afirma precisión de obra.
+
 ## Próximos productos priorizados
 
-1. **Terrain 3D:** relieve con DEM verificado, resolución/licencia/precisión vertical visibles y sombreado útil para escurrimiento.
-2. **Outcome Ledger:** relación entre señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar.
-3. **Earth Time extendido:** más de 90 días, comparación entre campañas y más índices sólo después de evaluación agronómica.
+1. **Outcome Ledger:** relación entre señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar.
+2. **Earth Time extendido:** más de 90 días, comparación entre campañas y más índices sólo después de evaluación agronómica.
+3. **Terrain 3D interactivo:** malla/render con motor y licencia compatibles, sólo después de que el relieve 2D demuestre uso.
 
 ## Claims permitidos
 
@@ -83,6 +90,7 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 - “Prioriza recorridas por comparación relativa y conserva evidencia.”
 - “Muestra un saldo de referencia con lluvia, riego declarado y ET0 FAO‑56.”
 - “Rechaza evidencia de campo con políglota o hash conocido sin enviar la foto a un catálogo.”
+- “Muestra relieve Copernicus DEM GLO-30 con resolución 30 m, LE90ABS publicada y licencia visibles.”
 - “Integra la decisión con la operación y el costo.”
 
 No se afirmará “detecta enfermedades”, “optimiza riego”, “aumenta rendimiento”, “centimétrico”, “tiempo real”, “homologado” o “ahorra X%” sin protocolo, datos de campo, intervalo de confianza y alcance contractual que lo respalden.

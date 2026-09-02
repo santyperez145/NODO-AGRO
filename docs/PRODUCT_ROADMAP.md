@@ -14,6 +14,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - NODO Water con ET0 FAO‑56, lluvia persistida, riego declarado append-only, NDMI/suelo como evidencia y saldo de referencia por lote.
 - NODO Scout con planificación desde Earth o manual, responsables configurables, reasignación y estados auditables, autorización por responsable, hallazgos georreferenciados y fotografía privada con hash server-side.
 - NODO Scout Field con rechazo de políglotas y hashes conocidos antes de adjuntar; JPEG/PNG/WebP siguen siendo los únicos tipos permitidos.
+- NODO Terrain con Copernicus DEM GLO-30 (DSM ~30 m), hillshade, elevación por lote, LE90ABS y licencia visibles; sin malla 3D ni modelo de escurrimiento.
 - NODO Field Offline v3 con shell instalable, paquete Scout mínimo de 24 horas, recuperación tras recarga sin servidor, bóveda AES-GCM por usuario, bloqueo automático, hallazgos y fotografías cifrados, límites de cuota, sincronización idempotente y carga TUS reanudable; APIs, tokens y multimedia privada quedan fuera del caché.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
@@ -44,7 +45,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 - Flujo completo de orden preventiva/correctiva, repuestos, responsables, costo y cierre.
 - Gateway offline-first con cola local, OTA firmada y observabilidad de conectividad.
 - Extender Earth Time ya operativo: más de 90 días, comparación entre campañas, evaluación con agrónomo y sincronización offline supervisada de recorridas completas.
-- Incorporar NODO Terrain 3D sólo con DEM licenciado, resolución y precisión vertical declaradas; luego evaluar escurrimiento y transitabilidad con evidencia de campo.
+- Terrain v1 (relieve DEM + metadatos) ya está operativo; evaluar escurrimiento/transitabilidad sólo con evidencia de campo y, después, un motor 3D licenciado.
 - Importadores CSV y conectores iniciales para sistemas de balanza/RFID y maquinaria autorizados.
 - Experimentos A/B de recomendaciones y registro de resultado para aprender qué funciona por contexto, sin mezclar datos privados.
 - Transferencia de propiedad con step-up MFA, permisos por capacidad y facturación SaaS; organizaciones, invitaciones, roles y baja básica ya están implementados.

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(160);
+select plan(172);
 
 select has_table('public','livestock_groups','livestock groups table exists');
 select has_table('public','livestock_events','append-only livestock events table exists');
@@ -24,6 +24,10 @@ select has_table('public','irrigation_events','declared irrigation ledger exists
 select has_table('public','water_balance_runs','water balance runs exist');
 select has_table('public','parcel_water_balances','parcel water balances exist');
 select has_view('public','latest_parcel_water_balances','latest water balances view exists');
+select has_table('public','terrain_relief_runs','terrain relief runs exist');
+select has_table('public','parcel_terrain_metrics','parcel terrain metrics exist');
+select has_view('public','latest_parcel_terrain_metrics','latest terrain metrics view exists');
+select has_view('public','latest_terrain_relief_runs','latest terrain runs view exists');
 select has_table('public','scouting_visits','scouting visits table exists');
 select has_table('public','scouting_visit_events','append-only scouting visit history exists');
 select has_table('public','scouting_findings','append-only field findings table exists');
@@ -57,6 +61,8 @@ select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='irrigation_events'),true,'irrigation events have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='water_balance_runs'),true,'water balance runs have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='parcel_water_balances'),true,'parcel water balances have RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='terrain_relief_runs'),true,'terrain relief runs have RLS enabled');
+select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='parcel_terrain_metrics'),true,'parcel terrain metrics have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_visits'),true,'scouting visits have RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_visit_events'),true,'scouting history has RLS enabled');
 select is((select relrowsecurity from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='scouting_findings'),true,'scouting findings have RLS enabled');
@@ -97,12 +103,18 @@ select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[
 select is(has_table_privilege('authenticated','public.irrigation_events','INSERT'),false,'browser cannot forge irrigation events');
 select is(has_table_privilege('authenticated','public.water_balance_runs','INSERT'),false,'browser cannot forge water runs');
 select is(has_table_privilege('authenticated','public.parcel_water_balances','INSERT'),false,'browser cannot forge water balances');
+select is(has_table_privilege('authenticated','public.terrain_relief_runs','INSERT'),false,'browser cannot forge terrain runs');
+select is(has_table_privilege('authenticated','public.parcel_terrain_metrics','INSERT'),false,'browser cannot forge terrain metrics');
+select is(has_table_privilege('authenticated','public.terrain_relief_runs','UPDATE'),false,'browser cannot alter terrain runs');
+select is(has_table_privilege('authenticated','public.parcel_terrain_metrics','UPDATE'),false,'browser cannot alter terrain metrics');
 select is(has_table_privilege('authenticated','public.irrigation_events','UPDATE'),false,'browser cannot alter irrigation events');
 select ok(has_table_privilege('authenticated','public.irrigation_events','SELECT'),'members can inspect irrigation events');
 select ok(has_function_privilege('authenticated','public.record_irrigation_event(uuid,uuid,date,numeric,irrigation_method,text,uuid)','EXECUTE'),'authenticated role can declare guarded irrigation');
 select ok(has_function_privilege('authenticated','public.reverse_irrigation_event(uuid,text,uuid)','EXECUTE'),'authenticated role can reverse guarded irrigation');
 select ok((select pg_get_constraintdef(oid) like '%irrigation_event%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts irrigation events');
 select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='latest_parcel_water_balances'),'latest water balances view runs with invoker security');
+select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='latest_parcel_terrain_metrics'),'latest terrain metrics view runs with invoker security');
+select ok((select 'security_invoker=true'=any(coalesce(reloptions,array[]::text[])) from pg_class join pg_namespace on pg_namespace.oid=pg_class.relnamespace where nspname='public' and relname='latest_terrain_relief_runs'),'latest terrain runs view runs with invoker security');
 select is(has_table_privilege('authenticated','public.scouting_visits','INSERT'),false,'browser cannot bypass scouting RPC');
 select is(has_table_privilege('authenticated','public.scouting_visit_events','INSERT'),false,'browser cannot forge scouting history');
 select is(has_table_privilege('authenticated','public.scouting_findings','INSERT'),false,'browser cannot forge field findings');

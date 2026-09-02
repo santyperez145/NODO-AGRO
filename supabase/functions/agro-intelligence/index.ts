@@ -183,7 +183,7 @@ Deno.serve(async request => {
     if (userRate.error || orgRate.error) throw userRate.error ?? orgRate.error;
     if ((userRate.count ?? 0) >= 6 || (orgRate.count ?? 0) >= 30) return json({ error: safeMessage(429), code: 'rate_limited' }, 429);
 
-    const [parcels, devices, readings, weather, satellite, satelliteMetrics, satelliteBaselines, waterBalances, irrigations, recommendations, scoutingVisits, scoutingFindings, livestock, machinery, workOrders, finances, operations] = await Promise.all([
+    const [parcels, devices, readings, weather, satellite, satelliteMetrics, satelliteBaselines, waterBalances, irrigations, terrainMetrics, recommendations, scoutingVisits, scoutingFindings, livestock, machinery, workOrders, finances, operations] = await Promise.all([
       admin.from('land_parcels').select('name,use,crop,area_hectares,health_score').eq('establishment_id', establishmentId).order('name').limit(100),
       admin.from('devices').select('id,display_name,kind,status,last_seen_at,expected_interval_minutes').eq('establishment_id', establishmentId).order('display_name').limit(100),
       admin.from('latest_sensor_readings').select('device_id,observed_at,metric,value,unit,quality').eq('establishment_id', establishmentId).order('observed_at', { ascending: false }).limit(200),
@@ -193,6 +193,7 @@ Deno.serve(async request => {
       admin.from('parcel_index_baselines').select('parcel_id,index_name,algorithm_version,observation_count,median_value,percentile_25,percentile_75,latest_mean,latest_delta,latest_captured_at').eq('establishment_id',establishmentId).limit(200),
       admin.from('latest_parcel_water_balances').select('parcel_id,algorithm_version,window_start,window_end,rain_mm,et0_mm,irrigation_mm,reference_balance_mm,weather_days,ndmi_latest,ndmi_delta,soil_moisture_pct,coverage_status,review_status,limitations').eq('establishment_id',establishmentId).limit(100),
       admin.from('irrigation_events').select('parcel_id,applied_on,depth_mm,method,reversal_of').eq('establishment_id',establishmentId).order('applied_on',{ascending:false}).limit(100),
+      admin.from('latest_parcel_terrain_metrics').select('parcel_id,algorithm_version,elev_mean_m,elev_min_m,elev_max_m,relief_m,quality_status,resolution_meters,surface_kind,published_le90abs_mean_m,product_id').eq('establishment_id',establishmentId).limit(100),
       admin.from('recommendations').select('title,rationale,action,priority,confidence,evidence,valid_until,generated_at').eq('establishment_id', establishmentId).eq('status', 'open').order('generated_at', { ascending: false }).limit(20),
       admin.from('scouting_visits').select('parcel_id,source_type,title,objective,priority,status,scheduled_for,summary,source_snapshot').eq('establishment_id',establishmentId).order('scheduled_for',{ascending:false}).limit(100),
       admin.from('scouting_findings').select('parcel_id,category,severity,observed_at,notes,latitude').eq('establishment_id',establishmentId).order('observed_at',{ascending:false}).limit(200),
@@ -202,7 +203,7 @@ Deno.serve(async request => {
       admin.from('financial_entries').select('direction,occurred_on,category,amount,currency').eq('establishment_id', establishmentId).order('occurred_on', { ascending: false }).limit(100),
       admin.from('operational_summary').select('*').eq('establishment_id', establishmentId).maybeSingle(),
     ]);
-    for (const query of [parcels, devices, readings, weather, satellite, satelliteMetrics, satelliteBaselines, waterBalances, irrigations, recommendations, scoutingVisits, scoutingFindings, livestock, machinery, workOrders, finances, operations]) if (query.error) throw query.error;
+    for (const query of [parcels, devices, readings, weather, satellite, satelliteMetrics, satelliteBaselines, waterBalances, irrigations, terrainMetrics, recommendations, scoutingVisits, scoutingFindings, livestock, machinery, workOrders, finances, operations]) if (query.error) throw query.error;
 
     const deviceAliases = new Map((devices.data ?? []).map((device, index) => [device.id, `device_${index + 1}`]));
     const snapshot = {
@@ -215,7 +216,7 @@ Deno.serve(async request => {
       parcels: parcels.data ?? [],
       devices: (devices.data ?? []).map(({ id, ...device }) => ({ device_ref: deviceAliases.get(id), ...device })),
       latest_sensor_readings: (readings.data ?? []).map(({ device_id, ...reading }) => ({ device_ref: deviceAliases.get(device_id) ?? 'unknown_device', ...reading })),
-      latest_weather: weather.data, satellite_scenes: satellite.data ?? [], latest_satellite_scene: satellite.data?.[0] ?? null, parcel_satellite_metrics: satelliteMetrics.data ?? [], parcel_index_baselines: satelliteBaselines.data ?? [], parcel_water_balances: waterBalances.data ?? [], irrigation_events: irrigations.data ?? [], open_rule_recommendations: recommendations.data ?? [],
+      latest_weather: weather.data, satellite_scenes: satellite.data ?? [], latest_satellite_scene: satellite.data?.[0] ?? null, parcel_satellite_metrics: satelliteMetrics.data ?? [], parcel_index_baselines: satelliteBaselines.data ?? [], parcel_water_balances: waterBalances.data ?? [], irrigation_events: irrigations.data ?? [], parcel_terrain_metrics: terrainMetrics.data ?? [], open_rule_recommendations: recommendations.data ?? [],
       scouting_visits: scoutingVisits.data ?? [],
       scouting_findings: (scoutingFindings.data ?? []).map(({ latitude, ...finding }) => ({ ...finding, geolocated: latitude !== null })),
       livestock_groups: livestock.data ?? [], machine_assets: machinery.data ?? [], maintenance_work_orders: workOrders.data ?? [], recent_financial_entries: finances.data ?? [],
@@ -258,6 +259,7 @@ Deno.serve(async request => {
           'Priorizá decisiones concretas que conecten producción, clima, satélite, recorridas, IoT, rodeo, maquinaria y economía. Tratá los hallazgos de campo como evidencia, no como diagnóstico automático.',
           'Si hay serie Earth Time, usá sólo observaciones usable y la mediana empírica del mismo lote. No interpretes un delta como fenología, enfermedad, riego ni rendimiento.',
           'Si hay saldo hídrico, usá lluvia + riego declarado − ET0 FAO-56 como referencia. No lo trates como ETc, no prescribas lámina, no afirmes ahorro y no interpretes NDMI o humedad de suelo como diagnóstico de estrés.',
+          'Si hay relieve Terrain, usá sólo elevación DSM Copernicus GLO-30 y su LE90ABS publicada. No lo trates como topografía de obra, DTM, escurrimiento ni inundación.',
           'No prescribas productos fitosanitarios, dosis, tratamientos veterinarios ni maniobras físicas de riesgo.',
           'Toda intervención o automatización crítica requiere aprobación humana y validación profesional aplicable.',
           'Respondé en el idioma y las unidades indicadas por el establecimiento. Si el impacto económico no puede cuantificarse, describilo cualitativamente.',

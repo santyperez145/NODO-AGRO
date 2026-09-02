@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
-import { CalendarRange, Database, Download, Layers3, LoaderCircle, ScanSearch, ShieldAlert, Sparkles } from 'lucide-react';
+import { CalendarRange, Database, Download, Layers3, LoaderCircle, Mountain, ScanSearch, ShieldAlert, Sparkles } from 'lucide-react';
 import { SatelliteFarmMap, type SatelliteRasterLayer } from './SatelliteMap';
 import { parseGeoJsonPolygon } from './lib/geojson';
-import { planetaryRasterUrl, satelliteLayers, type SatelliteLayerName } from './lib/satellite';
-import { useComputeSatelliteAnalytics, useComputeSatelliteTimeseries, type ParcelIndexBaseline, type ParcelSatelliteMetric, type SatelliteIndexName, type Workspace } from './lib/workspace';
+import { planetaryRasterUrl, planetaryReliefUrl, satelliteLayers, type SatelliteLayerName } from './lib/satellite';
+import { useComputeSatelliteAnalytics, useComputeSatelliteTimeseries, useComputeTerrainRelief, type ParcelIndexBaseline, type ParcelSatelliteMetric, type SatelliteIndexName, type Workspace } from './lib/workspace';
 import type { ScoutSeed } from './ScoutPanel';
 
 const roleCanAnalyze=new Set(['owner','admin','agronomist','operator']);
 const sclAlgorithm=(index:SatelliteIndexName)=>index==='ndvi'?'sentinel2-l2a-ndvi-scl-v1':'sentinel2-l2a-ndmi-scl-v1';
 const parcelColors=['#2f6f3e','#b45309','#1d4ed8','#9f1239','#0f766e','#7c3aed'];
+const terrainAlgorithm='cop-dem-glo-30-relief-v1';
 
 function qualityLabel(metric:ParcelSatelliteMetric){
   if(metric.quality_status==='usable')return metric.scl_cloud_percent===null?'Apta para comparar':`Apta · SCL nubes ${metric.scl_cloud_percent.toFixed(1)}%`;
@@ -79,14 +80,25 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
   const [focusedParcelId,setFocusedParcelId]=useState<string|null>(null);
   const analysis=useComputeSatelliteAnalytics();
   const series=useComputeSatelliteTimeseries();
+  const terrain=useComputeTerrainRelief();
   const definition=satelliteLayers.find(item=>item.id===layer)!;
   const analysisIndex:SatelliteIndexName|null=layer==='ndvi'||layer==='ndmi'?layer:null;
   const selectedScene=data.satelliteScenes.find(scene=>scene.id===selectedSceneId)??data.satellite;
+  const latestTerrainRun=data.terrainReliefRuns.find(run=>run.status==='completed'||run.status==='partial')??data.terrainReliefRuns[0]??null;
+  const terrainMetrics=useMemo(()=>[...data.parcelTerrainMetrics]
+    .filter(metric=>metric.algorithm_version===terrainAlgorithm)
+    .sort((left,right)=>left.elev_mean_m-right.elev_mean_m),[data.parcelTerrainMetrics]);
   const rasterLayer=useMemo<SatelliteRasterLayer|null>(()=>{
-    if(layer==='reference'||!selectedScene)return null;
+    if(layer==='reference')return null;
+    if(layer==='relief'){
+      const mosaicId=latestTerrainRun?.mosaic_search_id;
+      const url=mosaicId?planetaryReliefUrl(mosaicId):null;
+      return url?{url,label:definition.label,opacity}:null;
+    }
+    if(!selectedScene)return null;
     const url=planetaryRasterUrl(selectedScene.external_id,layer);
     return url?{url,label:definition.label,opacity}:null;
-  },[selectedScene,definition.label,layer,opacity]);
+  },[selectedScene,definition.label,layer,opacity,latestTerrainRun?.mosaic_search_id]);
   const algorithm=analysisIndex?sclAlgorithm(analysisIndex):null;
   const sceneMetrics=useMemo(()=>analysisIndex&&selectedScene?data.satelliteMetrics
     .filter(metric=>metric.satellite_scene_id===selectedScene.id&&metric.index_name===analysisIndex)
@@ -131,25 +143,30 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
   },[data.weatherDaily,seriesPoints]);
   const baselines=analysisIndex&&algorithm?data.parcelIndexBaselines.filter(item=>item.index_name===analysisIndex&&item.algorithm_version===algorithm):[];
   const focusedBaseline=baselines.find(item=>item.parcel_id===(focusedParcelId??priorityParcel?.id??baselines[0]?.parcel_id))??null;
-  const busy=analysis.isPending||series.isPending;
+  const busy=analysis.isPending||series.isPending||terrain.isPending;
 
   return <section className="earthModule">
-    <div className="moduleToolbar earthToolbar"><div><small>NODO EARTH · INTELIGENCIA SATELITAL</small><h2>{establishment.name}</h2><p>Escenas Sentinel‑2 reales, serie SCL por lote y comparación trazable. Misma lógica que un Crop Status: fecha, nubes por polígono y curva, sin diagnosticar.</p></div>
-      {analysisIndex&&canAnalyze&&<div className="earthActions">
-        <button className="earthAnalyze ghost" disabled={busy||!selectedScene||boundedParcels.length===0} onClick={()=>analysis.mutate({establishmentId:establishment.id,indexName:analysisIndex})}>{analysis.isPending?<LoaderCircle className="spin"/>:<ScanSearch/>}{preferredMetrics.length?'Recalcular escena':'Analizar escena'}</button>
-        <button className="earthAnalyze" disabled={busy||boundedParcels.length===0} onClick={()=>series.mutate({establishmentId:establishment.id,indexName:analysisIndex})}>{series.isPending?<LoaderCircle className="spin"/>:<CalendarRange/>}{seriesPoints.length?'Actualizar serie SCL':'Construir serie SCL'}</button>
-      </div>}
+    <div className="moduleToolbar earthToolbar"><div><small>NODO EARTH · INTELIGENCIA SATELITAL</small><h2>{establishment.name}</h2><p>Escenas Sentinel‑2 reales, serie SCL por lote, relieve DEM licenciado y comparación trazable. Sin diagnosticar ni inventar cotas.</p></div>
+      <div className="earthActions">
+        {analysisIndex&&canAnalyze&&<>
+          <button className="earthAnalyze ghost" disabled={busy||!selectedScene||boundedParcels.length===0} onClick={()=>analysis.mutate({establishmentId:establishment.id,indexName:analysisIndex})}>{analysis.isPending?<LoaderCircle className="spin"/>:<ScanSearch/>}{preferredMetrics.length?'Recalcular escena':'Analizar escena'}</button>
+          <button className="earthAnalyze" disabled={busy||boundedParcels.length===0} onClick={()=>series.mutate({establishmentId:establishment.id,indexName:analysisIndex})}>{series.isPending?<LoaderCircle className="spin"/>:<CalendarRange/>}{seriesPoints.length?'Actualizar serie SCL':'Construir serie SCL'}</button>
+        </>}
+        {canAnalyze&&<button className="earthAnalyze" disabled={busy||boundedParcels.length===0} onClick={()=>{setLayer('relief');terrain.mutate(establishment.id)}}>{terrain.isPending?<LoaderCircle className="spin"/>:<Mountain/>}{terrainMetrics.length?'Actualizar relieve':'Construir relieve DEM'}</button>}
+      </div>
     </div>
 
-    {!data.satellite&&<div className="earthWarning"><ShieldAlert/><div><b>Falta una escena fechada</b><span>Usá “Sincronizar fuentes” o “Construir serie SCL” para buscar Sentinel‑2 de los últimos 90 días.</span></div></div>}
+    {!data.satellite&&layer!=='relief'&&<div className="earthWarning"><ShieldAlert/><div><b>Falta una escena fechada</b><span>Usá “Sincronizar fuentes” o “Construir serie SCL” para buscar Sentinel‑2 de los últimos 90 días. El relieve DEM no depende de esa escena.</span></div></div>}
     {analysis.error&&<div className="earthError"><ShieldAlert/><div><b>El análisis de escena no se completó</b><span>{analysis.error instanceof Error?analysis.error.message:'Error no identificado'}. Las métricas anteriores permanecen intactas.</span></div></div>}
     {series.error&&<div className="earthError"><ShieldAlert/><div><b>La serie SCL no se completó</b><span>{series.error instanceof Error?series.error.message:'Error no identificado'}. Las observaciones anteriores permanecen intactas.</span></div></div>}
+    {terrain.error&&<div className="earthError"><ShieldAlert/><div><b>El relieve DEM no se completó</b><span>{terrain.error instanceof Error?terrain.error.message:'Error no identificado'}. Las métricas anteriores permanecen intactas.</span></div></div>}
     {analysis.isSuccess&&<div className="earthSuccess"><Database/><div><b>Escena persistida</b><span>{analysis.data.succeeded_count} lotes procesados{analysis.data.failed_count?` · ${analysis.data.failed_count} con error`:''}. Resultado {analysis.data.status==='completed'?'completo':'parcial'}.</span></div></div>}
     {series.isSuccess&&<div className="earthSuccess"><Database/><div><b>Serie SCL persistida</b><span>{series.data.succeeded_count} observaciones nuevas · {series.data.skipped_existing_count} ya existían · {series.data.rain_days} días de lluvia. Ventana {new Date(series.data.window.start).toLocaleDateString('es-AR')} – {new Date(series.data.window.end).toLocaleDateString('es-AR')}.</span></div></div>}
+    {terrain.isSuccess&&<div className="earthSuccess"><Database/><div><b>Relieve DEM persistido</b><span>{terrain.data.succeeded_count} lotes · Copernicus DEM GLO-30 · {terrain.data.resolution_meters} m · LE90ABS media publicada {terrain.data.published_le90abs_mean_m} m.</span></div></div>}
 
-    {data.satelliteScenes.length>0&&<div className="earthSceneRail" aria-label="Escenas fechadas">{data.satelliteScenes.map(scene=><button key={scene.id} className={selectedScene?.id===scene.id?'active':''} onClick={()=>setSelectedSceneId(scene.id)}><b>{new Date(scene.captured_at).toLocaleDateString('es-AR')}</b><small>{scene.cloud_cover_pct?.toFixed(0)??'—'}% nubes escena</small></button>)}</div>}
+    {data.satelliteScenes.length>0&&layer!=='relief'&&<div className="earthSceneRail" aria-label="Escenas fechadas">{data.satelliteScenes.map(scene=><button key={scene.id} className={selectedScene?.id===scene.id?'active':''} onClick={()=>setSelectedSceneId(scene.id)}><b>{new Date(scene.captured_at).toLocaleDateString('es-AR')}</b><small>{scene.cloud_cover_pct?.toFixed(0)??'—'}% nubes escena</small></button>)}</div>}
 
-    <div className="earthLayerBar" aria-label="Capas satelitales">{satelliteLayers.map(item=><button key={item.id} className={layer===item.id?'active':''} onClick={()=>setLayer(item.id)} disabled={item.id!=='reference'&&!selectedScene}><Layers3/><span><b>{item.label}</b><small>{item.resolutionMeters?`${item.resolutionMeters} m`:'Contexto'}</small></span></button>)}</div>
+    <div className="earthLayerBar" aria-label="Capas satelitales">{satelliteLayers.map(item=><button key={item.id} className={layer===item.id?'active':''} onClick={()=>setLayer(item.id)} disabled={item.id!=='reference'&&item.id!=='relief'&&!selectedScene}><Layers3/><span><b>{item.label}</b><small>{item.resolutionMeters?`${item.resolutionMeters} m`:'Contexto'}</small></span></button>)}</div>
 
     <article className="earthMapCard">
       <SatelliteFarmMap position={{latitude:establishment.latitude,longitude:establishment.longitude}} name={establishment.name} parcels={data.parcels} showParcelLabels rasterLayer={rasterLayer}/>
@@ -161,11 +178,31 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
     </article>
 
     <div className="earthEvidence">
-      <article><small>ESCENA</small><b>{selectedScene?new Date(selectedScene.captured_at).toLocaleDateString('es-AR'):'—'}</b><span>{selectedScene?`${selectedScene.collection} · ${selectedScene.cloud_cover_pct?.toFixed(1)??'—'}% nubes de escena`:'Sin fuente'}</span></article>
-      <article><small>CATÁLOGO</small><b>{data.satelliteScenes.length}</b><span>Hasta 12 escenas de 90 días · Planetary Computer</span></article>
-      <article><small>LOTE ANALIZADO</small><b>{preferredMetrics.length}/{boundedParcels.length}</b><span>{latestRun?`${runLabel(latestRun.status)} · ${new Date(latestRun.started_at).toLocaleString('es-AR')}`:'Sin ejecución para esta capa'}</span></article>
-      <article><small>CALIDAD</small><b>{algorithm?'SCL por lote':'Escena'}</b><span>Nubosidad de polígono, no sólo el metadato global</span></article>
+      <article><small>ESCENA</small><b>{layer==='relief'?'DEM GLO-30':selectedScene?new Date(selectedScene.captured_at).toLocaleDateString('es-AR'):'—'}</b><span>{layer==='relief'?`${latestTerrainRun?.collection??'cop-dem-glo-30'} · DSM`:selectedScene?`${selectedScene.collection} · ${selectedScene.cloud_cover_pct?.toFixed(1)??'—'}% nubes de escena`:'Sin fuente'}</span></article>
+      <article><small>{layer==='relief'?'RESOLUCIÓN':'CATÁLOGO'}</small><b>{layer==='relief'?`${latestTerrainRun?.resolution_meters??30} m`:data.satelliteScenes.length}</b><span>{layer==='relief'?`LE90ABS media publicada ${latestTerrainRun?.published_le90abs_mean_m??1.92} m`:'Hasta 12 escenas de 90 días · Planetary Computer'}</span></article>
+      <article><small>LOTE ANALIZADO</small><b>{layer==='relief'?`${terrainMetrics.length}/${boundedParcels.length}`:`${preferredMetrics.length}/${boundedParcels.length}`}</b><span>{layer==='relief'?(latestTerrainRun?`${runLabel(latestTerrainRun.status)} · ${new Date(latestTerrainRun.started_at).toLocaleString('es-AR')}`:'Sin ejecución de relieve'):(latestRun?`${runLabel(latestRun.status)} · ${new Date(latestRun.started_at).toLocaleString('es-AR')}`:'Sin ejecución para esta capa')}</span></article>
+      <article><small>CALIDAD</small><b>{layer==='relief'?'DSM · EGM2008':algorithm?'SCL por lote':'Escena'}</b><span>{layer==='relief'?'No es cota de obra ni DTM de suelo desnudo':'Nubosidad de polígono, no sólo el metadato global'}</span></article>
     </div>
+
+    {layer==='relief'&&<article className="earthTimeCard">
+      <div className="earthSectionTitle"><div><small>NODO TERRAIN</small><h3>Relieve con DEM licenciado</h3></div>
+        {latestTerrainRun?.license_url&&<a className="earthCsv" href={latestTerrainRun.license_url} target="_blank" rel="noreferrer">Licencia Copernicus DEM</a>}
+      </div>
+      {terrainMetrics.length?<div className="earthMetricTable">{terrainMetrics.map(metric=>{
+        const parcel=data.parcels.find(item=>item.id===metric.parcel_id);
+        return <div key={metric.id} className={metric.quality_status==='usable'?'usable':'cloud_limited'}>
+          <div><b>{parcel?.name??'Lote'}</b><small>{metric.quality_status==='usable'?`Apta · ${metric.pixel_count.toLocaleString('es-AR')} px`:`Píxeles insuficientes · ${metric.pixel_count}`}</small></div>
+          <strong>{metric.elev_mean_m.toFixed(1)} m</strong>
+          <span>{metric.elev_min_m.toFixed(1)} – {metric.elev_max_m.toFixed(1)} m</span>
+          <span>relieve {metric.relief_m.toFixed(1)} m · σ {metric.elev_stddev_m.toFixed(1)}</span>
+        </div>;
+      })}</div>:<div className="earthEmpty compact"><Mountain/><b>Todavía no hay elevación por lote</b><span>Construí el relieve para sombrear el mapa con Copernicus DEM GLO-30 y guardar min/media/máx por polígono.</span></div>}
+      <div className="earthTimeMeta">
+        <span>Producto {latestTerrainRun?.product_id??'cop-dem-glo-30'} · algoritmo {terrainAlgorithm}</span>
+        <span>Precisión vertical publicada LE90ABS media ≈ {latestTerrainRun?.published_le90abs_mean_m??1.92} m (sin Antártida/Groenlandia). Hay desviaciones locales.</span>
+        <span>El sombreado orienta dónde cae el terreno relativo; no modela escurrimiento ni inundación.</span>
+      </div>
+    </article>}
 
     {analysisIndex&&<article className="earthTimeCard">
       <div className="earthSectionTitle"><div><small>NODO EARTH TIME</small><h3>Estado de cultivo · {analysisIndex==='ndvi'?'NDVI':'NDMI'}</h3></div>
@@ -198,7 +235,7 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
 
     {baselines.length>0&&<div className="earthBaselineGrid">{baselines.map(item=>{const parcel=data.parcels.find(row=>row.id===item.parcel_id);return <article key={item.id}><small>{parcel?.name??'Lote'}</small><b>{item.median_value.toFixed(3)}</b><span>{item.observation_count} observaciones usable · p25 {item.percentile_25.toFixed(3)} · p75 {item.percentile_75.toFixed(3)}</span><em>{item.latest_delta===null?'Mediana empírica: se necesitan 3 fechas despejadas para un delta.':`Última vs mediana: ${item.latest_delta>=0?'+':''}${item.latest_delta.toFixed(3)}`}</em></article>})}</div>}
 
-    <div className="earthBoundary"><ShieldAlert/><p><b>Límite agronómico:</b> Earth Time acepta una fecha sólo si SCL marca menos de 5% de nube, sombra o cirros dentro del polígono, igual que el criterio público de Auravant. No identifica enfermedad, estrés, necesidad de riego ni rendimiento. La línea base es la mediana del mismo lote, no un modelo fenológico certificado. Toda intervención requiere validación profesional y en campo.</p></div>
-    <div className="earthRoadmap"><Layers3/><div><small>SIGUIENTE CAPACIDAD VERIFICABLE</small><b>NODO Terrain 3D</b><span>Relieve con DEM licenciado, resolución y precisión vertical declaradas. Water ya combina ET0, lluvia, riego declarado y NDMI como evidencia, no como prescripción.</span></div></div>
+    <div className="earthBoundary"><ShieldAlert/><p><b>Límite agronómico:</b> Earth Time acepta una fecha sólo si SCL marca menos de 5% de nube, sombra o cirros dentro del polígono. Terrain usa Copernicus DEM GLO-30 (DSM ~30 m, LE90ABS media publicada ~1,92 m) y no es topografía de obra ni modelo hidrológico. No identifica enfermedad, estrés, necesidad de riego ni rendimiento. Toda intervención requiere validación profesional y en campo.</p></div>
+    <div className="earthRoadmap"><Layers3/><div><small>SIGUIENTE CAPACIDAD VERIFICABLE</small><b>Outcome Ledger</b><span>Relacionar señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar. El relieve 3D interactivo queda pendiente de un motor de render con licencia compatible.</span></div></div>
   </section>;
 }
