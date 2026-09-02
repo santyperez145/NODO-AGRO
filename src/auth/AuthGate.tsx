@@ -1,13 +1,15 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { AlertCircle, Eye, EyeOff, LoaderCircle, LockKeyhole } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Eye, EyeOff, LoaderCircle, LockKeyhole } from 'lucide-react';
 import { authRedirectUrl, isAuthConfigured, rememberedOfflineIdentity, rememberOfflineIdentity, scrubAuthCallbackUrl, supabase } from '../lib/supabase';
 import { lockOfflineVault } from '../lib/offlineVault';
+import { Landing } from '../Landing';
 
 export function AuthGate({ children }: { children: (identity:{userId:string;sessionBacked:boolean})=>ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(isAuthConfigured);
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [gate, setGate] = useState<'landing' | 'auth'>(() => window.location.hash === '#entrar' || window.location.hash === '#cuenta' ? 'auth' : 'landing');
+  const [mode, setMode] = useState<'login' | 'signup'>(() => window.location.hash === '#cuenta' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -56,13 +58,14 @@ export function AuthGate({ children }: { children: (identity:{userId:string;sess
     if (error) { setMessage({ tone: 'error', text: error.message }); setSubmitting(false); }
   }
 
-  if (loading) return <div className="authLoading"><LoaderCircle className="spin"/><span>Verificando sesión segura…</span></div>;
+  if (loading) return <div className="authLoading"><LoaderCircle className="spin"/><span>Abriendo NODO…</span></div>;
   if (session) return <>{children({userId:session.user.id,sessionBacked:true})}</>;
   const offlineIdentity=(!online||authUnavailable)?rememberedOfflineIdentity():null;
   if(offlineIdentity)return <>{children({userId:offlineIdentity,sessionBacked:false})}</>;
+  if(gate==='landing')return <Landing onEnter={next=>{setMode(next);setGate('auth');window.location.hash=next==='signup'?'cuenta':'entrar'}}/>;
 
-  return <div className="authPage"><section className="authStory"><div className="authBrand"><ActivityLogo/></div><div><small>INTELIGENCIA OPERATIVA AGROPECUARIA</small><h1>Tu campo.<br/>Conectado y predecible.</h1><p>Satélites, sensores y operaciones convertidos en decisiones claras para producir mejor.</p></div><footer>Los datos de cada establecimiento permanecen aislados y bajo control de su organización.</footer></section><section className="authPanel"><form onSubmit={submit}><div className="authMark"><LockKeyhole/></div><h2>{mode === 'login' ? 'Ingresá a NODO' : 'Creá tu cuenta'}</h2><p>{mode === 'login' ? 'Accedé al gemelo digital de tu establecimiento.' : 'Comenzá la configuración segura de tu operación.'}</p>
-    {!isAuthConfigured && <div className="authMessage error"><AlertCircle/>Falta configurar Supabase. Copiá <b>.env.example</b> a <b>.env.local</b> y completá las credenciales públicas.</div>}
+  return <div className="authPage"><section className="authStory"><div className="authBrand"><ActivityLogo/></div><div><small>TU ESTABLECIMIENTO, ORDENADO</small><h1>Entrá y seguí el campo desde un solo lugar.</h1><p>Mapa, recorridas, agua, maquinaria y números. Cada sugerencia llega con evidencia. Vos decidís.</p></div><footer>Los datos de cada empresa quedan separados. Nadie opera el campo por vos.</footer></section><section className="authPanel"><form onSubmit={submit}><button className="authBack" type="button" onClick={()=>{setGate('landing');window.location.hash=''}}><ArrowLeft/>Volver a NODO</button><div className="authMark"><LockKeyhole/></div><h2>{mode === 'login' ? 'Ingresá a NODO' : 'Creá tu cuenta'}</h2><p>{mode === 'login' ? 'Accedé al tablero de tu establecimiento.' : 'Empezá con tu campo. Sin datos de demostración.'}</p>
+    {!isAuthConfigured && <div className="authMessage error"><AlertCircle/>El ingreso todavía no está habilitado en este sitio. Si te invitaron, escribinos.</div>}
     {message && <div className={`authMessage ${message.tone}`}><AlertCircle/>{message.text}</div>}
     <label>Correo electrónico<input type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="nombre@empresa.com"/></label>
     <label>Contraseña<div className="password"><input type={showPassword?'text':'password'} autoComplete={mode==='login'?'current-password':'new-password'} minLength={10} required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 10 caracteres"/><button type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Ocultar contraseña':'Mostrar contraseña'}>{showPassword?<EyeOff/>:<Eye/>}</button></div></label>

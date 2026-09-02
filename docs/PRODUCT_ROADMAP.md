@@ -10,7 +10,10 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 
 - Identidad real email/contraseña y Google, multiempresa y RLS.
 - NODO Earth con color real Sentinel-2, NDVI/NDMI por píxel, estadísticas auditables por lote y recorrido sugerido conservador.
+- NODO Earth Time con catálogo de 90 días, calidad SCL por polígono, curva por lote, lluvia diaria persistida y mediana empírica del mismo lote.
+- NODO Water con ET0 FAO‑56, lluvia persistida, riego declarado append-only, NDMI/suelo como evidencia y saldo de referencia por lote.
 - NODO Scout con planificación desde Earth o manual, responsables configurables, reasignación y estados auditables, autorización por responsable, hallazgos georreferenciados y fotografía privada con hash server-side.
+- NODO Scout Field con rechazo de políglotas y hashes conocidos antes de adjuntar; JPEG/PNG/WebP siguen siendo los únicos tipos permitidos.
 - NODO Field Offline v3 con shell instalable, paquete Scout mínimo de 24 horas, recuperación tras recarga sin servidor, bóveda AES-GCM por usuario, bloqueo automático, hallazgos y fotografías cifrados, límites de cuota, sincronización idempotente y carga TUS reanudable; APIs, tokens y multimedia privada quedan fuera del caché.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.
@@ -28,7 +31,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Elegir una zona y tres establecimientos con acceso semanal al decisor.
 - Levantar inventario real, conectividad, una estación, cuatro sondas, RFID/balanza existente y telemetría básica de dos máquinas.
-- Pilotear NODO Flota, NODO Scout, NODO Teams y la bóveda offline v3 ya implementados; medir preparación/expiración del paquete, sesión vencida, cuota/evicción, reanudación y pérdida de frase en dispositivos de campo, y agregar análisis antimalware antes de habilitar archivos no controlados a escala.
+- Pilotear NODO Flota, NODO Scout, NODO Teams, Scout Field y la bóveda offline v3 ya implementados; medir preparación/expiración del paquete, sesión vencida, cuota/evicción, reanudación y pérdida de frase en dispositivos de campo. Archivos no controlados siguen fuera de alcance.
 - Configurar dominio, SMTP transaccional y entregabilidad; ensayar invitación, aceptación, revocación y offboarding con dos cuentas reales antes de incorporar personal del piloto.
 - Configurar el proveedor de inteligencia y construir un set de 50 casos evaluados por un agrónomo/encargado: evidencia correcta, utilidad, acción aceptada y daño potencial.
 - Medir tiempo de carga, disponibilidad de señal, horas de parada, costo de mantenimiento, adopción de partes y decisiones ejecutadas.
@@ -40,7 +43,7 @@ Esto es un núcleo técnico de piloto, no product-market fit, validación agron�
 
 - Flujo completo de orden preventiva/correctiva, repuestos, responsables, costo y cierre.
 - Gateway offline-first con cola local, OTA firmada y observabilidad de conectividad.
-- Evolucionar el procesamiento por polígono ya operativo: máscara SCL, series temporales, baseline fenológico, sincronización offline supervisada de recorridas completas y evaluación con agrónomo.
+- Extender Earth Time ya operativo: más de 90 días, comparación entre campañas, evaluación con agrónomo y sincronización offline supervisada de recorridas completas.
 - Incorporar NODO Terrain 3D sólo con DEM licenciado, resolución y precisión vertical declaradas; luego evaluar escurrimiento y transitabilidad con evidencia de campo.
 - Importadores CSV y conectores iniciales para sistemas de balanza/RFID y maquinaria autorizados.
 - Experimentos A/B de recomendaciones y registro de resultado para aprender qué funciona por contexto, sin mezclar datos privados.

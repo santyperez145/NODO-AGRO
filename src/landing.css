@@ -1,0 +1,91 @@
+.landing{min-height:100vh;background:#eef1ea;color:#1c241d;overflow-x:hidden}
+.landNav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:22px;padding:16px 7vw;background:#eef1eacc;backdrop-filter:blur(14px);border-bottom:1px solid #d5ddd0}
+.landBrand{display:flex;align-items:center;gap:9px;color:inherit;text-decoration:none}
+.landBrand span{width:34px;height:34px;border-radius:9px;background:#b7dd68;color:#172313;display:grid;place-items:center;font-size:22px}
+.landBrand b{font:700 18px Manrope;letter-spacing:.4px}
+.landNav nav{display:flex;gap:18px;margin-left:auto}
+.landNav nav a{color:#5c6a5c;text-decoration:none;font:600 13px 'DM Sans'}
+.landNavActions{display:flex;gap:8px}
+.landGhost,.landSolid{border:0;border-radius:9px;padding:10px 16px;font:700 12px 'DM Sans';cursor:pointer}
+.landGhost{background:transparent;color:#2d3b2e;border:1px solid #c5d0c2}
+.landGhost.light{border-color:#4a5c48;color:#e8f0e2}
+.landSolid{background:#243723;color:#fff}
+.landHero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:72px 7vw 48px}
+.landHero small,.landIntro small,.landTrust small,.landWho small{display:block;font:700 11px/1 'DM Sans';letter-spacing:1.6px;color:#5f7d3f}
+.landHero h1{font:700 58px/.98 Manrope;letter-spacing:-2.2px;margin:16px 0 18px;max-width:14ch}
+.landHero p,.landIntro p,.landTrust p,.landWho p,.landClose p{font-size:17px;line-height:1.6;color:#5b675c;margin:0}
+.landHeroCtas{display:flex;align-items:center;gap:16px;margin:28px 0 22px}
+.landHeroCtas a{color:#3f5a36;font:700 14px 'DM Sans'}
+.landHeroPoints{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.landHeroPoints li{font-size:14px;color:#3e4b3f;padding-left:16px;position:relative}
+.landHeroPoints li:before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:50%;background:#8bb24e}
+.landPreview{background:#121a14;color:#e4ecdf;border-radius:22px;padding:16px;box-shadow:0 30px 70px #1a26184d}
+.landPreviewBar{display:flex;justify-content:space-between;align-items:baseline;padding:6px 8px 12px}
+.landPreviewBar span{font-size:10px;letter-spacing:1px;color:#8ea085;text-transform:uppercase}
+.landPreviewBar b{font:700 14px Manrope}
+.landPreviewMap{height:220px;border-radius:14px;background:
+  radial-gradient(circle at 20% 30%,#3d5a32 0 18%,transparent 19%),
+  radial-gradient(circle at 70% 40%,#2b4630 0 28%,transparent 29%),
+  linear-gradient(135deg,#1c2a1d,#243323 55%,#1a261c);
+  position:relative;overflow:hidden}
+.landPreviewMap .p{position:absolute;border:2px solid #d7ecc0cc;border-radius:10px}
+.landPreviewMap .a{left:12%;top:18%;width:34%;height:38%;background:#6f9a4a55}
+.landPreviewMap .b{left:50%;top:28%;width:36%;height:32%;background:#c4a24a44}
+.landPreviewMap .c{left:22%;top:58%;width:40%;height:26%;background:#4f7d5555}
+.landPreviewMap .pin{left:7%;top:8%;width:14px;height:14px;border-radius:50%;background:#b7dd68;box-shadow:0 0 0 8px #b7dd6833}
+.landPreviewCards{display:grid;gap:8px;margin-top:12px}
+.landPreviewCards article{background:#1c261d;border-radius:11px;padding:11px 13px}
+.landPreviewCards small{color:#8aa07a;font-size:10px;letter-spacing:.6px}
+.landPreviewCards b{display:block;font:700 14px Manrope;margin:3px 0 2px}
+.landPreviewCards span{font-size:12px;color:#9aab96}
+.landProblem{margin:10px 7vw 20px;padding:28px 32px;background:#dfe8c8;border-radius:18px}
+.landProblem p{margin:0;font:700 26px/1.35 Manrope;color:#243023;max-width:28ch}
+.landPath,.landCaps,.landWho{padding:56px 7vw}
+.landIntro{max-width:680px;margin-bottom:28px}
+.landIntro h2,.landTrust h2,.landWho h2,.landClose h2{font:700 36px/1.1 Manrope;letter-spacing:-1px;margin:10px 0 12px}
+.landPath ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.landPath li{background:#f7f9f4;border:1px solid #d7dfd1;border-radius:16px;padding:20px}
+.landPath b{color:#7d9a4d;font:700 13px Manrope}
+.landPath h3,.landGrid h3,.landWho h3{font:700 18px Manrope;margin:10px 0 8px}
+.landPath p,.landGrid p{font-size:14px;line-height:1.55;color:#5d6a5e;margin:0}
+.landGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.landGrid article{background:#f7f9f4;border:1px solid #d7dfd1;border-radius:16px;padding:20px}
+.landGrid svg{width:22px;height:22px;color:#4f6f32}
+.landTrust{margin:0 7vw 20px;padding:36px;background:#121a14;color:#e7eee3;border-radius:22px;display:grid;grid-template-columns:.9fr 1.1fr;gap:36px}
+.landTrust small{color:#b7dd68}
+.landTrust h2{color:#fff}
+.landTrust p{color:#b3c0b0}
+.landTrust ul{list-style:none;margin:0;padding:0;display:grid;gap:16px}
+.landTrust li{display:flex;gap:12px;align-items:flex-start}
+.landTrust svg{width:22px;height:22px;color:#b7dd68;flex:0 0 auto;margin-top:2px}
+.landTrust b{display:block;font:700 16px Manrope;margin-bottom:4px}
+.landTrust span{font-size:14px;line-height:1.5;color:#b3c0b0}
+.landWhoGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.landWhoGrid article{background:#f7f9f4;border:1px solid #d7dfd1;border-radius:16px;padding:24px}
+.landClose{margin:10px 7vw 36px;padding:48px 40px;border-radius:22px;background:#243723;color:#eef5e8;text-align:center}
+.landClose h2{color:#fff;max-width:16ch;margin:0 auto 12px}
+.landClose p{color:#c5d3bf;max-width:42ch;margin:0 auto}
+.landClose .landHeroCtas{justify-content:center}
+.landFoot{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 7vw 36px;color:#667266}
+.landFoot div{display:flex;align-items:center;gap:8px}
+.landFoot span{width:28px;height:28px;border-radius:8px;background:#b7dd68;color:#172313;display:grid;place-items:center}
+.landFoot b{font:700 14px Manrope;color:#243023}
+.landFoot p{margin:0;font-size:13px;max-width:42ch}
+@media(max-width:1000px){
+  .landHero,.landPath ol,.landGrid,.landTrust,.landWhoGrid{grid-template-columns:1fr 1fr}
+  .landHero h1{font-size:44px}
+  .landNav nav{display:none}
+}
+@media(max-width:720px){
+  .landNav{padding:12px 18px}
+  .landHero,.landPath,.landCaps,.landWho{padding:36px 18px}
+  .landHero,.landGrid,.landPath ol,.landTrust,.landWhoGrid{grid-template-columns:1fr}
+  .landHero{gap:28px;padding-top:28px}
+  .landHero h1{font-size:36px;letter-spacing:-1.4px}
+  .landProblem{margin:0 18px 8px;padding:22px}
+  .landProblem p,.landIntro h2,.landTrust h2,.landClose h2{font-size:26px}
+  .landTrust,.landClose{margin-left:18px;margin-right:18px;padding:24px}
+  .landClose .landHeroCtas,.landFoot{flex-direction:column;text-align:center}
+  .landFoot{padding:10px 18px 28px}
+  .landNavActions .landGhost{display:none}
+}

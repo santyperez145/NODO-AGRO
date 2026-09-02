@@ -611,7 +611,7 @@ export async function loadOfflineFieldPackage(userId:string,organizationId?:stri
 }
 
 export function offlineFieldPackageToWorkspace(field:OfflineFieldPackagePayload):Workspace{
-  return{organizations:[field.organization],organization:field.organization,establishment:field.establishment,parcels:field.parcels,devices:[],sensorReadings:[],deviceTwins:[],deviceCommands:[],weather:null,satellite:null,satelliteMetrics:[],satelliteAnalysisRuns:[],scoutingVisits:field.scoutingVisits,scoutingVisitEvents:[],scoutingAssignees:field.scoutingAssignees,scoutingFindings:field.scoutingFindings,scoutingFindingMedia:field.scoutingFindingMedia,recommendations:[],livestockGroups:[],livestockEvents:[],machineAssets:[],machineEvents:[],maintenanceWorkOrders:[],maintenanceWorkOrderEvents:[],financialEntries:[],operationalSummary:null,latestAiAnalysis:null};
+  return{organizations:[field.organization],organization:field.organization,establishment:field.establishment,parcels:field.parcels,devices:[],sensorReadings:[],deviceTwins:[],deviceCommands:[],weather:null,satellite:null,satelliteScenes:[],satelliteMetrics:[],satelliteAnalysisRuns:[],satelliteTimeseriesRuns:[],parcelIndexBaselines:[],weatherDaily:[],irrigationEvents:[],waterBalanceRuns:[],parcelWaterBalances:[],scoutingVisits:field.scoutingVisits,scoutingVisitEvents:[],scoutingAssignees:field.scoutingAssignees,scoutingFindings:field.scoutingFindings,scoutingFindingMedia:field.scoutingFindingMedia,recommendations:[],livestockGroups:[],livestockEvents:[],machineAssets:[],machineEvents:[],maintenanceWorkOrders:[],maintenanceWorkOrderEvents:[],financialEntries:[],operationalSummary:null,latestAiAnalysis:null};
 }
 
 export async function resetOfflineVault(userId:string){

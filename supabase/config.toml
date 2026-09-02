@@ -393,6 +393,12 @@ verify_jwt = true
 [functions.satellite-analytics]
 verify_jwt = true
 
+[functions.satellite-timeseries]
+verify_jwt = true
+
+[functions.water-balance]
+verify_jwt = true
+
 [functions.scouting-evidence]
 verify_jwt = true
 

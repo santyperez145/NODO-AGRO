@@ -1,6 +1,6 @@
 # Estrategia competitiva de NODO Earth
 
-Actualizado: 2026-08-29. Este análisis usa capacidades declaradas en sitios oficiales; no supone acceso a productos internos, precios privados ni validación independiente de resultados comerciales.
+Actualizado: 2026-09-02. Este análisis usa capacidades declaradas en sitios oficiales; no supone acceso a productos internos, precios privados ni validación independiente de resultados comerciales.
 
 ## Qué aprendemos del mercado
 
@@ -45,20 +45,44 @@ El activo acumulativo es ese historial longitudinal de señal → decisión → 
 - Recorrida dirigida por diferencia relativa dentro de la misma escena, sin afirmar causa ni prescribir intervención.
 - NODO Scout ya conecta esa señal con una recorrida planificada, hallazgos de campo, ubicación opcional, fotografía privada con hash server-side, bitácora y cierre; la evidencia satelital original queda congelada para auditoría.
 
-Limitación actual: la versión `unmasked-v1` no aplica máscara de nubes por píxel ni serie temporal. Es útil como inspección relativa y piloto, no como diagnóstico o certificación de rendimiento.
+Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl-v1` ya filtra por SCL del polígono y construye serie, pero no reescribe píxeles nublados ni certifica fenología.
+
+## NODO Earth Time implementado
+
+- Catálogo de hasta 12 escenas Sentinel‑2 L2A en 90 días, no una sola foto.
+- Calidad por lote con histograma SCL: nube/sombra/cirros ≥ 5% deja la fecha fuera de la mediana, el mismo umbral público de Auravant.
+- Curva por lote, filtro de nubladas, lluvia diaria de Open‑Meteo Archive y CSV de observaciones persistidas.
+- Línea base = mediana empírica del mismo polígono; el delta exige tres fechas `usable`.
+- El Parte Inteligente recibe escenas, observaciones y baselines; no puede inventar una causa.
+
+## NODO Water implementado
+
+- Saldo de referencia por lote: lluvia persistida + riego declarado − ET0 FAO‑56 de Open‑Meteo.
+- El riego es evidencia append-only, no un comando de bomba. La reversión genera contrapartida y queda en auditoría.
+- NDMI usable SCL y humedad de suelo en % entran como cobertura, no como diagnóstico.
+- `verify` exige NDMI bajo la mediana del mismo lote, saldo negativo y sin riego en 7 días.
+- El Parte Inteligente recibe balances y eventos; no puede prescribir ETc, lámina ni ahorro.
+
+## NODO Scout Field implementado
+
+- Tras TUS, el servidor relee el objeto, valida firma/hash y busca políglotas (PE, ELF, ZIP, PDF, OLE, HTML/script/SVG y colas de contenedor).
+- Consulta sólo el SHA‑256 en MalwareBazaar y, si hay clave, en VirusTotal. La fotografía no sale del bucket de NODO.
+- `blocked` no adjunta metadatos. `unknown` declara catálogo incompleto. No se habilitan archivos arbitrarios.
+- El Parte y Scout muestran el veredicto; no se afirma antivirus certificado ni autenticidad visual.
 
 ## Próximos productos priorizados
 
-1. **Earth Time:** serie temporal por lote, máscara SCL, percentiles robustos y cambio contra baseline fenológico.
-2. **Scout Field:** extender la fotografía privada ya operativa con vault offline cifrado, carga reanudable, análisis antimalware y responsables configurables.
-3. **Water:** balance hídrico que combine NDMI, lluvia, suelo y riego; nunca sustituirá medición calibrada.
-4. **Terrain 3D:** relieve con DEM verificado, resolución/licencia/precisión vertical visibles y sombreado útil para escurrimiento.
-5. **Outcome Ledger:** relación entre señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar.
+1. **Terrain 3D:** relieve con DEM verificado, resolución/licencia/precisión vertical visibles y sombreado útil para escurrimiento.
+2. **Outcome Ledger:** relación entre señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar.
+3. **Earth Time extendido:** más de 90 días, comparación entre campañas y más índices sólo después de evaluación agronómica.
 
 ## Claims permitidos
 
 - “Visualiza una escena Sentinel‑2 fechada y calcula índices por lote.”
+- “Construye una serie de 90 días y oculta fechas con 5% o más de nube SCL dentro del lote.”
 - “Prioriza recorridas por comparación relativa y conserva evidencia.”
+- “Muestra un saldo de referencia con lluvia, riego declarado y ET0 FAO‑56.”
+- “Rechaza evidencia de campo con políglota o hash conocido sin enviar la foto a un catálogo.”
 - “Integra la decisión con la operación y el costo.”
 
 No se afirmará “detecta enfermedades”, “optimiza riego”, “aumenta rendimiento”, “centimétrico”, “tiempo real”, “homologado” o “ahorra X%” sin protocolo, datos de campo, intervalo de confianza y alcance contractual que lo respalden.

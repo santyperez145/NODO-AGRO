@@ -7,6 +7,9 @@ const corsHeaders={
 };
 const allowedTypes=new Map([['image/jpeg','jpg'],['image/png','png'],['image/webp','webp']]);
 const maxBytes=8*1024*1024;
+const scanAlgorithm='field-scan-v1';
+const bazaarUrl='https://mb-api.abuse.ch/api/v1/';
+const virusTotalUrl='https://www.virustotal.com/api/v3/files/';
 
 type AdminClient=ReturnType<typeof createClient>;
 type EvidenceMetadata={
@@ -38,6 +41,139 @@ function safeFilename(raw:string,extension:string){
 function decodedHeader(raw:string|null){if(!raw)return '';try{return decodeURIComponent(raw)}catch{return raw}}
 function digestHex(bytes:Uint8Array){return crypto.subtle.digest('SHA-256',bytes).then(value=>Array.from(new Uint8Array(value),byte=>byte.toString(16).padStart(2,'0')).join(''))}
 function evidenceResult(media:{id:string;finding_id:string;sha256:string;size_bytes:number;mime_type:string},idempotent=true){return{media_id:media.id,finding_id:media.finding_id,sha256:media.sha256,size_bytes:media.size_bytes,mime_type:media.mime_type,idempotent}}
+
+function indexOfBytes(haystack:Uint8Array,needle:number[],start=0){
+  outer:for(let index=start;index<=haystack.length-needle.length;index+=1){
+    for(let offset=0;offset<needle.length;offset+=1)if(haystack[index+offset]!==needle[offset])continue outer;
+    return index;
+  }
+  return -1;
+}
+function lastIndexOfBytes(haystack:Uint8Array,needle:number[]){
+  for(let index=haystack.length-needle.length;index>=0;index-=1){
+    if(needle.every((value,offset)=>haystack[index+offset]===value))return index;
+  }
+  return -1;
+}
+function riffPayloadSize(bytes:Uint8Array){
+  if(bytes.length<8)return null;
+  return bytes[4]|bytes[5]<<8|bytes[6]<<16|bytes[7]<<24;
+}
+
+function structuralFindings(bytes:Uint8Array,mime:string){
+  const findings:string[]=[];
+  const searchFrom=mime==='image/webp'?12:16;
+  const signatures:[string,number[]][]=[
+    ['embedded_pe',[0x4d,0x5a]],
+    ['embedded_elf',[0x7f,0x45,0x4c,0x46]],
+    ['embedded_zip',[0x50,0x4b,0x03,0x04]],
+    ['embedded_pdf',[0x25,0x50,0x44,0x46]],
+    ['embedded_ole',[0xd0,0xcf,0x11,0xe0]],
+    ['embedded_html',[0x3c,0x68,0x74,0x6d,0x6c]],
+    ['embedded_script',[0x3c,0x73,0x63,0x72,0x69,0x70,0x74]],
+    ['embedded_svg',[0x3c,0x73,0x76,0x67]],
+  ];
+  for(const [code,needle] of signatures){
+    if(indexOfBytes(bytes,needle,searchFrom)>=0)findings.push(code);
+  }
+  if(mime==='image/jpeg'){
+    const eoi=lastIndexOfBytes(bytes,[0xff,0xd9]);
+    if(eoi>=0&&bytes.length-eoi-2>32)findings.push('jpeg_trailer');
+  }
+  if(mime==='image/png'){
+    const iend=lastIndexOfBytes(bytes,[0x00,0x00,0x00,0x00,0x49,0x45,0x4e,0x44,0xae,0x42,0x60,0x82]);
+    if(iend>=0&&bytes.length-iend-12>8)findings.push('png_trailer');
+  }
+  if(mime==='image/webp'){
+    const declared=riffPayloadSize(bytes);
+    if(declared!==null&&declared+8<bytes.length-16)findings.push('riff_trailer');
+  }
+  return findings;
+}
+
+async function fetchJson(url:string,init:RequestInit,timeoutMs=8000){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const result=await fetch(url,{...init,signal:controller.signal});
+    const payload=await result.json().catch(()=>null);
+    return{ok:result.ok,status:result.status,payload};
+  }finally{clearTimeout(timeout)}
+}
+
+async function catalogHits(sha256:string){
+  const hits:Array<Record<string,unknown>>=[];
+  const limitations:string[]=[];
+  const providers:string[]=['nodo-structural'];
+  let catalogMiss=false;
+  try{
+    const bazaar=await fetchJson(bazaarUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'NODO-ScoutField/field-scan-v1'},
+      body:new URLSearchParams({query:'get_info',hash:sha256}),
+    });
+    providers.push('malwarebazaar');
+    const status=typeof (bazaar.payload as {query_status?:unknown}|null)?.query_status==='string'?(bazaar.payload as {query_status:string}).query_status:'';
+    if(bazaar.ok&&status==='ok')hits.push({provider:'malwarebazaar',result:'known_sample'});
+    else if(bazaar.ok&&(status==='hash_not_found'||status==='no_results'||status===''))catalogMiss=true;
+    else limitations.push('MalwareBazaar no confirmó ausencia; sólo se consultó el hash.');
+  }catch{
+    limitations.push('El catálogo MalwareBazaar no respondió; no se envió el archivo.');
+  }
+
+  const virusTotalKey=Deno.env.get('VIRUSTOTAL_API_KEY')?.trim();
+  if(virusTotalKey){
+    try{
+      const report=await fetchJson(`${virusTotalUrl}${sha256}`,{headers:{'x-apikey':virusTotalKey,'Accept':'application/json'}});
+      providers.push('virustotal');
+      if(report.status===404){
+        catalogMiss=true;
+      }else if(report.ok){
+        const stats=(report.payload as {data?:{attributes?:{last_analysis_stats?:{malicious?:unknown;suspicious?:unknown}}}}|null)?.data?.attributes?.last_analysis_stats;
+        const malicious=typeof stats?.malicious==='number'?stats.malicious:0;
+        const suspicious=typeof stats?.suspicious==='number'?stats.suspicious:0;
+        if(malicious>0||suspicious>0)hits.push({provider:'virustotal',malicious,suspicious});
+        else catalogMiss=true;
+      }else{
+        limitations.push('VirusTotal no devolvió un informe de hash.');
+      }
+    }catch{
+      limitations.push('VirusTotal no respondió; no se envió el archivo.');
+    }
+  }else{
+    limitations.push('Sin clave VirusTotal: no hay segundo catálogo de hashes.');
+  }
+  return{hits,limitations,providers,catalogMiss};
+}
+
+function scanVerdict(findings:string[],hits:Array<Record<string,unknown>>,catalogMiss:boolean){
+  if(findings.length||hits.length)return 'blocked' as const;
+  return catalogMiss?'clean' as const:'unknown' as const;
+}
+
+async function persistScan(admin:AdminClient,input:{
+  organizationId:string;establishmentId:string;mediaId:string|null;objectPath:string;sha256:string;
+  verdict:'clean'|'unknown'|'blocked';providers:string[];findings:string[];hits:Array<Record<string,unknown>>;
+  limitations:string[];requestId:string;
+}){
+  const {data,error}=await admin.rpc('record_scouting_media_scan_server',{
+    target_organization:input.organizationId,target_establishment:input.establishmentId,target_media:input.mediaId,
+    target_object_path:input.objectPath,media_sha256:input.sha256,scan_verdict:input.verdict,scan_algorithm:scanAlgorithm,
+    scan_providers:input.providers,structural_findings:input.findings,catalog_hits:input.hits,scan_limitations:input.limitations,
+    request_id:input.requestId,
+  });
+  if(error)throw error;
+  return data as string;
+}
+
+async function cachedBlockedScan(admin:AdminClient,organizationId:string,sha256:string){
+  const {data,error}=await admin.from('scouting_media_scans')
+    .select('id,verdict,structural_findings,catalog_hits,providers,limitations')
+    .eq('organization_id',organizationId).eq('sha256',sha256).eq('algorithm_version',scanAlgorithm).eq('verdict','blocked')
+    .order('scanned_at',{ascending:false}).limit(1).maybeSingle();
+  if(error)throw error;
+  return data;
+}
 
 function parseMetadata(value:unknown):EvidenceMetadata|null{
   if(typeof value!=='object'||!value)return null;
@@ -79,20 +215,44 @@ async function storedObject(admin:AdminClient,path:string){
   return data?.find(item=>item.name===filename)??null;
 }
 
-async function attachVerified(admin:AdminClient,userId:string,metadata:EvidenceMetadata,path:string,bytes:Uint8Array){
+async function attachVerified(admin:AdminClient,userId:string,finding:{organization_id:string;establishment_id:string},metadata:EvidenceMetadata,path:string,bytes:Uint8Array){
   if(bytes.length!==metadata.sizeBytes||!validSignature(bytes,metadata.mimeType)){
     await admin.storage.from('scouting-evidence').remove([path]);
     return response(415,{error:'uploaded_file_validation_failed'});
   }
   const sha256=await digestHex(bytes);
   if(sha256!==metadata.sha256){await admin.storage.from('scouting-evidence').remove([path]);return response(409,{error:'uploaded_file_digest_mismatch'});}
+
+  const cached=await cachedBlockedScan(admin,finding.organization_id,sha256);
+  const findings=cached?((cached.structural_findings as string[])??[]):structuralFindings(bytes,metadata.mimeType);
+  const catalogs=cached?{hits:(cached.catalog_hits as Array<Record<string,unknown>>)??[],limitations:(cached.limitations as string[])??[],providers:(cached.providers as string[])??['nodo-structural'],catalogMiss:false}:await catalogHits(sha256);
+  const verdict=cached?'blocked':scanVerdict(findings,catalogs.hits,catalogs.catalogMiss);
+  const limitations=[
+    ...(catalogs.limitations??[]),
+    'NODO consulta hashes, no envía la fotografía a un catálogo.',
+    'Esto no es un antivirus certificado ni una moderación visual.',
+  ];
+  try{
+    await persistScan(admin,{
+      organizationId:finding.organization_id,establishmentId:finding.establishment_id,mediaId:null,objectPath:path,sha256,
+      verdict,providers:catalogs.providers,findings,hits:catalogs.hits,limitations,requestId:metadata.requestId,
+    });
+  }catch(error){
+    await admin.storage.from('scouting-evidence').remove([path]);
+    return response(502,{error:'field_scan_persist_failed',detail:error instanceof Error?error.message:'scan_write_failed'});
+  }
+  if(verdict==='blocked'){
+    await admin.storage.from('scouting-evidence').remove([path]);
+    return response(415,{error:'media_blocked_by_field_scan',findings,catalog_hits:catalogs.hits});
+  }
+
   const {data:mediaId,error:attachError}=await admin.rpc('attach_scouting_media_server',{
     target_finding:metadata.findingId,target_object_path:path,media_filename:metadata.filename,media_mime_type:metadata.mimeType,media_size_bytes:bytes.length,
     media_sha256:sha256,media_capture_source:metadata.captureSource,media_captured_at:metadata.capturedAt,media_caption:metadata.caption,
     request_id:metadata.requestId,actor_user:userId,
   });
   if(attachError){await admin.storage.from('scouting-evidence').remove([path]);return response(409,{error:'evidence_attach_failed',detail:attachError.message});}
-  return response(201,{media_id:mediaId,finding_id:metadata.findingId,sha256,size_bytes:bytes.length,mime_type:metadata.mimeType});
+  return response(201,{media_id:mediaId,finding_id:metadata.findingId,sha256,size_bytes:bytes.length,mime_type:metadata.mimeType,scan_verdict:verdict,scan_algorithm:scanAlgorithm});
 }
 
 Deno.serve(async request=>{
@@ -126,6 +286,8 @@ Deno.serve(async request=>{
     const path=objectPath(authorizationResult.finding,metadata.requestId,extension);
 
     if(action==='prepare_resumable'){
+      const blocked=await cachedBlockedScan(admin,authorizationResult.finding.organization_id,metadata.sha256);
+      if(blocked)return response(415,{error:'media_blocked_by_field_scan'});
       const stored=await storedObject(admin,path);
       if(stored)return response(200,{status:'uploaded_pending_finalize',object_path:path});
       const {data,error}=await admin.storage.from('scouting-evidence').createSignedUploadUrl(path,{upsert:false});
@@ -139,7 +301,7 @@ Deno.serve(async request=>{
       if(body.object_path!==path)return response(400,{error:'invalid_object_path'});
       const {data:blob,error:downloadError}=await admin.storage.from('scouting-evidence').download(path);
       if(downloadError||!blob)return response(404,{error:'uploaded_object_not_found',detail:downloadError?.message});
-      return attachVerified(admin,userData.user.id,metadata,path,new Uint8Array(await blob.arrayBuffer()));
+      return attachVerified(admin,userData.user.id,authorizationResult.finding,metadata,path,new Uint8Array(await blob.arrayBuffer()));
     }
     return response(400,{error:'invalid_action'});
   }
@@ -167,5 +329,5 @@ Deno.serve(async request=>{
   const {error:uploadError}=await admin.storage.from('scouting-evidence').upload(path,bytes,{contentType,cacheControl:'3600',upsert:false});
   if(uploadError)return response(502,{error:'storage_upload_failed',detail:uploadError.message});
   const metadata:EvidenceMetadata={findingId:findingId as string,requestId:requestId as string,mimeType:contentType,sizeBytes:bytes.length,sha256:await digestHex(bytes),capturedAt:capturedAt.toISOString(),captureSource,caption,filename};
-  return attachVerified(admin,userData.user.id,metadata,path,bytes);
+  return attachVerified(admin,userData.user.id,authorizationResult.finding,metadata,path,bytes);
 });

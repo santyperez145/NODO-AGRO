@@ -78,22 +78,22 @@ Deno.serve(async (request) => {
     try {
       const delta = 0.03;
       const until = new Date();
-      const since = new Date(until.getTime() - 45 * 86_400_000);
+      const since = new Date(until.getTime() - 90 * 86_400_000);
       const stacResponse = await fetch('https://planetarycomputer.microsoft.com/api/stac/v1/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collections: ['sentinel-2-l2a'],
           bbox: [establishment.longitude - delta, establishment.latitude - delta, establishment.longitude + delta, establishment.latitude + delta],
           datetime: `${since.toISOString()}/${until.toISOString()}`,
-          query: { 'eo:cloud_cover': { lt: 70 } }, limit: 1,
+          query: { 'eo:cloud_cover': { lt: 80 } }, limit: 12,
           sortby: [{ field: 'datetime', direction: 'desc' }],
         }),
       });
       if (stacResponse.ok) {
         const stac = await stacResponse.json();
-        const scene = stac.features?.[0];
-        if (scene?.id && scene?.properties?.datetime) {
-          satellite = { external_id: scene.id, captured_at: scene.properties.datetime, cloud_cover_pct: scene.properties['eo:cloud_cover'] ?? null };
+        const scenes = Array.isArray(stac.features) ? stac.features : [];
+        for (const scene of scenes) {
+          if (!scene?.id || !scene?.properties?.datetime) continue;
           await admin.from('satellite_scenes').upsert({
             organization_id: establishment.organization_id, establishment_id: establishment.id,
             provider: 'Microsoft Planetary Computer', collection: 'sentinel-2-l2a', external_id: scene.id,
@@ -101,6 +101,10 @@ Deno.serve(async (request) => {
             catalog_url: scene.links?.find((link: { rel?: string }) => link.rel === 'self')?.href ?? null,
             metadata: { platform: scene.properties.platform, constellation: scene.properties.constellation },
           }, { onConflict: 'establishment_id,provider,external_id' });
+        }
+        const latest = scenes[0];
+        if (latest?.id && latest?.properties?.datetime) {
+          satellite = { external_id: latest.id, captured_at: latest.properties.datetime, cloud_cover_pct: latest.properties['eo:cloud_cover'] ?? null };
         }
       }
     } catch (satelliteError) {

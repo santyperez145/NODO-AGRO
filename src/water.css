@@ -1,0 +1,75 @@
+.waterModule{display:grid;gap:12px}
+.waterToolbar{align-items:flex-end}
+.waterAlert{border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px}
+.waterAlert.error{background:#f6e5dc;color:#874b39}
+.waterAlert.success{background:#deedd6;color:#35632f}
+.waterAlert svg{width:18px;flex:0 0 auto}
+.waterAlert div{display:grid}
+.waterAlert b{font-size:10px}
+.waterAlert span{font-size:9px}
+.waterKpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.waterKpis article{background:#fafbf8;border:1px solid #dce1da;border-radius:12px;padding:15px}
+.waterKpis.attention,.waterKpis article.attention{background:#fff8ef;border-color:#e7cba3}
+.waterKpis small{display:block;font-size:8px;letter-spacing:.7px;color:#7d897a;font-weight:700}
+.waterKpis b{display:block;font:700 22px Manrope;margin:5px 0 2px}
+.waterKpis span{font-size:8px;color:#899387}
+.waterChartCard,.waterParcels,.waterForm,.waterHistory{background:#fafbf8;border:1px solid #dce1da;border-radius:12px;padding:16px}
+.waterSectionTitle{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:12px}
+.waterSectionTitle small{font-size:7px;letter-spacing:1px;color:#74826e;font-weight:700}
+.waterSectionTitle h3{font:700 15px Manrope;margin:3px 0 0}
+.waterSectionTitle>span{font-size:8px;color:#7f8a7b}
+.waterLegend{display:flex;gap:12px;font-size:8px;color:#6f7a6c}
+.waterLegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.waterLegend .rain{background:#7ea7c9}
+.waterLegend .et0{background:#b45309}
+.waterLegend .irrig{background:#2f6f3e}
+.waterSvg{width:100%;height:auto;display:block}
+.waterTick{font-size:9px;fill:#7a8676}
+.waterChartNote{font-size:8px;color:#7f8a7b;margin:8px 0 0}
+.waterGrid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:start}
+.waterParcel{display:grid;grid-template-columns:1fr auto;gap:8px 12px;padding:12px 0;border-bottom:1px solid #e6eae3}
+.waterParcel:last-child{border:0}
+.waterParcel small{font-size:7px;letter-spacing:.5px;text-transform:uppercase;color:#6f7d68}
+.waterParcel.verify small{color:#9a602e}
+.waterParcel.insufficient small{color:#7a7268}
+.waterParcel b{display:block;font:700 13px Manrope;margin:3px 0 2px}
+.waterParcel span,.waterParcel em,.waterParcel p{display:block;font-size:8px;color:#7d8879;margin:0}
+.waterParcel em{font-style:normal;color:#4f5d4b}
+.waterParcel strong{font:700 22px Manrope;color:#2f4030}
+.waterParcel strong small{display:block;font-size:8px;letter-spacing:0;text-transform:none;color:#7d897a}
+.waterParcel button{grid-column:1/-1;border:0;border-radius:8px;background:#263725;color:#fff;padding:8px 11px;font:600 9px 'DM Sans';display:inline-flex;align-items:center;gap:6px;width:max-content}
+.waterParcel button svg{width:14px}
+.waterHint{grid-column:1/-1;color:#9a602e}
+.waterOps{display:grid;gap:12px}
+.waterFormTitle{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.waterFormTitle>svg{width:34px;height:34px;padding:8px;border-radius:9px;background:#e2ecd5;color:#55743d}
+.waterFormTitle h3{font:700 14px Manrope;margin:0}
+.waterFormTitle p{font-size:9px;color:#7f8a7b;margin:2px 0 0}
+.waterFormGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.waterFormGrid label{font-size:8px;color:#576354;font-weight:700}
+.waterFormGrid input,.waterFormGrid select{display:block;width:100%;margin-top:5px;border:1px solid #d6ddd2;border-radius:8px;background:#fff;padding:10px;font:10px 'DM Sans';color:#263025}
+.waterFormGrid .wide{grid-column:1/-1}
+.waterPrimary{margin-top:12px;margin-left:auto;border:0;border-radius:8px;background:#263725;color:#fff;padding:10px 14px;font:600 9px 'DM Sans';display:flex;align-items:center;gap:7px}
+.waterPrimary:disabled{opacity:.55}
+.waterPrimary svg{width:15px}
+.waterEvent{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #e9ece7}
+.waterEvent.reversed{opacity:.55}
+.waterEvent b{display:block;font-size:10px}
+.waterEvent span,.waterEvent small{display:block;font-size:8px;color:#7f897c}
+.waterEvent button{border:1px solid #d9ded5;background:#fff;border-radius:7px;width:30px;height:30px;color:#77685d}
+.waterEvent button svg{width:13px}
+.waterReversal{margin-top:12px;background:#fff8ef;border:1px solid #e7cba3;border-radius:10px;padding:12px;display:grid;gap:8px}
+.waterReversal label{font-size:8px;font-weight:700;color:#8c552a}
+.waterReversal input{display:block;width:100%;margin-top:5px;border:1px solid #e7cba3;border-radius:8px;padding:9px;font:10px 'DM Sans'}
+.waterReversal button{border:0;border-radius:8px;background:#8c552a;color:#fff;padding:9px 12px;font:600 9px 'DM Sans';display:inline-flex;align-items:center;gap:6px;width:max-content}
+.waterReversal button[type=button]{background:#fff;color:#6d5a45;border:1px solid #e7cba3}
+.waterEmpty{min-height:140px;border:1px dashed #ccd7c7;border-radius:11px;display:grid;place-content:center;text-align:center;color:#788475;padding:18px}
+.waterEmpty.compact{min-height:90px}
+.waterEmpty svg{margin:auto;width:26px}
+.waterEmpty b{display:block;font:700 12px Manrope;margin:8px 0 4px;color:#42513e}
+.waterEmpty span{font-size:8px}
+.waterBoundary{display:flex;gap:10px;align-items:flex-start;background:#f4eee4;border:1px solid #e4d6be;border-radius:11px;padding:12px 14px;color:#6d5a3d}
+.waterBoundary svg{width:18px;flex:0 0 auto;margin-top:2px}
+.waterBoundary p{margin:0;font-size:9px}
+@media(max-width:1050px){.waterKpis,.waterGrid,.waterFormGrid{grid-template-columns:1fr}}
+@media(max-width:760px){.waterToolbar{align-items:flex-start}.waterPrimary{width:100%}.waterEvent{grid-template-columns:1fr auto}}

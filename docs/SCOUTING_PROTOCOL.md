@@ -42,7 +42,7 @@ La ubicación es opcional. Cuando se captura, NODO almacena latitud, longitud y 
 - El navegador no registra metadatos directamente en Storage. `scouting-evidence` autentica sesión, rol y visita, prepara una carga TUS firmada y al finalizar vuelve a descargar el objeto para verificar tamaño, firma binaria y SHA‑256 antes de registrar metadatos y auditoría.
 - El bucket `scouting-evidence` es privado. La interfaz emite enlaces firmados por cinco minutos solamente para integrantes de la organización.
 - Los metadatos son append-only: archivo original, tamaño, tipo, fuente cámara/archivo, captura, descripción, hash, autor y momento.
-- Firma y hash permiten detectar sustitución o corrupción; no equivalen a análisis antivirus, autenticidad visual, cadena de custodia pericial ni prueba de presencia física.
+- Firma y hash permiten detectar sustitución o corrupción. El análisis de campo (`field-scan-v1`) busca políglotas y consulta el SHA‑256 en catálogos públicos; no envía la foto y no equivale a antivirus certificado, autenticidad visual, cadena de custodia pericial ni prueba de presencia física.
 
 ## Limitaciones de esta versión
 
@@ -50,7 +50,7 @@ La ubicación es opcional. Cuando se captura, NODO almacena latitud, longitud y 
 - La sincronización es manual y ordenada: primero hallazgos, luego fotos. El servidor vuelve a comprobar organización, rol, asignación y que la visita continúe en curso. Un rechazo queda visible y el pendiente no se elimina. El mismo UUID evita duplicados ante respuestas perdidas.
 - Las fotografías cifradas se reanudan por TUS en chunks de 6 MB. La URL de reanudación se conserva cifrada, nunca en `localStorage`; antes de transferir y al finalizar se vuelve a comprobar SHA‑256, firma y tamaño. Ningún binario privado entra al caché del service worker.
 - Perder la frase de protección hace irrecuperables los borradores locales. Restablecer la bóveda los elimina sólo después de confirmación explícita. El cifrado no compensa un dispositivo comprometido mientras está desbloqueado.
-- La versión actual valida firma binaria y tamaño, pero todavía no ejecuta análisis antimalware ni moderación visual.
+- Scout Field ya rechaza políglotas y hashes conocidos antes de adjuntar. Todavía no hay moderación visual ni tipos de archivo fuera de JPEG/PNG/WebP.
 - No verifica que el punto esté dentro del polígono ni sustituye instrumentos calibrados.
 - Una recorrida satelital usa el snapshot histórico aunque el índice se recalcule después, preservando reproducibilidad.
 
