@@ -15,6 +15,7 @@ La ventaja no será “usar IA”. Será el grafo operativo longitudinal del est
 - NODO Scout con planificación desde Earth o manual, responsables configurables, reasignación y estados auditables, autorización por responsable, hallazgos georreferenciados y fotografía privada con hash server-side.
 - NODO Scout Field con rechazo de políglotas y hashes conocidos antes de adjuntar; JPEG/PNG/WebP siguen siendo los únicos tipos permitidos.
 - NODO Terrain con Copernicus DEM GLO-30 (DSM ~30 m), hillshade, elevación por lote, LE90ABS y licencia visibles; sin malla 3D ni modelo de escurrimiento.
+- NODO Outcome Ledger con ciclos señal→labor→asiento→resultado y revisión de segunda identidad; montos sólo desde el libro.
 - NODO Field Offline v3 con shell instalable, paquete Scout mínimo de 24 horas, recuperación tras recarga sin servidor, bóveda AES-GCM por usuario, bloqueo automático, hallazgos y fotografías cifrados, límites de cuota, sincronización idempotente y carga TUS reanudable; APIs, tokens y multimedia privada quedan fuera del caché.
 - Clima persistido y reglas agronómicas explicables.
 - Red IoT con provisión segura, telemetría idempotente, gemelos, órdenes y acuse.

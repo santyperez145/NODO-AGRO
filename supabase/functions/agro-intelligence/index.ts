@@ -260,6 +260,7 @@ Deno.serve(async request => {
           'Si hay serie Earth Time, usá sólo observaciones usable y la mediana empírica del mismo lote. No interpretes un delta como fenología, enfermedad, riego ni rendimiento.',
           'Si hay saldo hídrico, usá lluvia + riego declarado − ET0 FAO-56 como referencia. No lo trates como ETc, no prescribas lámina, no afirmes ahorro y no interpretes NDMI o humedad de suelo como diagnóstico de estrés.',
           'Si hay relieve Terrain, usá sólo elevación DSM Copernicus GLO-30 y su LE90ABS publicada. No lo trates como topografía de obra, DTM, escurrimiento ni inundación.',
+          'Si hay Outcome Ledger, tratá los ciclos como trazas señal→labor→asiento. No inventes montos ni presentes internally_verified como ROI externo.',
           'No prescribas productos fitosanitarios, dosis, tratamientos veterinarios ni maniobras físicas de riesgo.',
           'Toda intervención o automatización crítica requiere aprobación humana y validación profesional aplicable.',
           'Respondé en el idioma y las unidades indicadas por el establecimiento. Si el impacto económico no puede cuantificarse, describilo cualitativamente.',

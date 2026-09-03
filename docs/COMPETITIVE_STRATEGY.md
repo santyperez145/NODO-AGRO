@@ -77,10 +77,17 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 - Hillshade del mosaico + min/media/máx/relieve por lote. Algoritmo `cop-dem-glo-30-relief-v1`.
 - No es malla 3D, no modela escurrimiento y no afirma precisión de obra.
 
+## NODO Outcome Ledger implementado
+
+- Ciclo trazable señal → labor → asiento del libro → resultado → revisión de segunda identidad.
+- Montos sólo desde `financial_entries` enlazados. Snapshot de señal congelado server-side.
+- `internally_verified` es control interno, no ROI externo ni causalidad certificada.
+- Nav **Resultados** con circuito visual de cinco nodos.
+
 ## Próximos productos priorizados
 
-1. **Outcome Ledger:** relación entre señal, decisión, labor, costo y resultado para demostrar ROI sin extrapolar.
-2. **Earth Time extendido:** más de 90 días, comparación entre campañas y más índices sólo después de evaluación agronómica.
+1. **Earth Time extendido:** más de 90 días, comparación entre campañas y más índices sólo después de evaluación agronómica.
+2. **Outcome Ledger v2:** spawn automático de labor al aceptar una recomendación y puentes a Pilot Control.
 3. **Terrain 3D interactivo:** malla/render con motor y licencia compatibles, sólo después de que el relieve 2D demuestre uso.
 
 ## Claims permitidos
@@ -91,6 +98,7 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 - “Muestra un saldo de referencia con lluvia, riego declarado y ET0 FAO‑56.”
 - “Rechaza evidencia de campo con políglota o hash conocido sin enviar la foto a un catálogo.”
 - “Muestra relieve Copernicus DEM GLO-30 con resolución 30 m, LE90ABS publicada y licencia visibles.”
+- “Enlaza señal, labor, costo del libro y resultado con revisión de dos identidades.”
 - “Integra la decisión con la operación y el costo.”
 
 No se afirmará “detecta enfermedades”, “optimiza riego”, “aumenta rendimiento”, “centimétrico”, “tiempo real”, “homologado” o “ahorra X%” sin protocolo, datos de campo, intervalo de confianza y alcance contractual que lo respalden.
