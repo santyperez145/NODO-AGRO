@@ -49,10 +49,11 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 
 ## NODO Earth Time implementado
 
-- Catálogo de hasta 12 escenas Sentinel‑2 L2A en 90 días, no una sola foto.
+- Catálogo de hasta 12 escenas Sentinel‑2 L2A en 90 días, o hasta 24 en 180 días (UI seleccionable; default 180).
 - Calidad por lote con histograma SCL: nube/sombra/cirros ≥ 5% deja la fecha fuera de la mediana, el mismo umbral público de Auravant.
 - Curva por lote, filtro de nubladas, lluvia diaria de Open‑Meteo Archive y CSV de observaciones persistidas.
 - Línea base = mediana empírica del mismo polígono; el delta exige tres fechas `usable`.
+- Comparación de campañas julio–junio: media de observaciones usable (no rendimiento ni fenología).
 - El Parte Inteligente recibe escenas, observaciones y baselines; no puede inventar una causa.
 
 ## NODO Water implementado
@@ -81,24 +82,27 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 
 - Ciclo trazable señal → labor → asiento del libro → resultado → revisión de segunda identidad.
 - Montos sólo desde `financial_entries` enlazados. Snapshot de señal congelado server-side.
+- Outcome v2: aceptar una recomendación abre o reutiliza el ciclo en servidor.
 - `internally_verified` es control interno, no ROI externo ni causalidad certificada.
 - Nav **Resultados** con circuito visual de cinco nodos.
 
 ## Próximos productos priorizados
 
-1. **Earth Time extendido:** más de 90 días, comparación entre campañas y más índices sólo después de evaluación agronómica.
-2. **Outcome Ledger v2:** spawn automático de labor al aceptar una recomendación y puentes a Pilot Control.
+1. **Puente Outcome → labor automática** (orden/Scout) y métricas Pilot Control enlazadas.
+2. **Onboarding SaaS pagable:** dominio, SMTP/SPF/DKIM y contrato — ver `docs/COMMERCIAL_PILOT.md`.
 3. **Terrain 3D interactivo:** malla/render con motor y licencia compatibles, sólo después de que el relieve 2D demuestre uso.
 
 ## Claims permitidos
 
 - “Visualiza una escena Sentinel‑2 fechada y calcula índices por lote.”
-- “Construye una serie de 90 días y oculta fechas con 5% o más de nube SCL dentro del lote.”
+- “Construye una serie de hasta 180 días y oculta fechas con 5% o más de nube SCL dentro del lote.”
+- “Compara medias usable entre campañas julio–junio sin afirmar rendimiento.”
 - “Prioriza recorridas por comparación relativa y conserva evidencia.”
 - “Muestra un saldo de referencia con lluvia, riego declarado y ET0 FAO‑56.”
 - “Rechaza evidencia de campo con políglota o hash conocido sin enviar la foto a un catálogo.”
 - “Muestra relieve Copernicus DEM GLO-30 con resolución 30 m, LE90ABS publicada y licencia visibles.”
 - “Enlaza señal, labor, costo del libro y resultado con revisión de dos identidades.”
+- “Al aceptar una recomendación abre un ciclo de resultados verificable.”
 - “Integra la decisión con la operación y el costo.”
 
 No se afirmará “detecta enfermedades”, “optimiza riego”, “aumenta rendimiento”, “centimétrico”, “tiempo real”, “homologado” o “ahorra X%” sin protocolo, datos de campo, intervalo de confianza y alcance contractual que lo respalden.

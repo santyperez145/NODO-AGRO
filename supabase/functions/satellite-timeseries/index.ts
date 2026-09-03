@@ -11,9 +11,7 @@ const sceneIdPattern = /^[A-Za-z0-9_-]{10,180}$/;
 const providerBaseUrl = 'https://planetarycomputer.microsoft.com/api/data/v1/item/statistics';
 const stacUrl = 'https://planetarycomputer.microsoft.com/api/stac/v1/search';
 const weatherArchiveUrl = 'https://archive-api.open-meteo.com/v1/archive';
-const maxScenes = 12;
-const maxNewObservations = 48;
-const catalogDays = 90;
+const allowedWindows = new Set([90, 180]);
 const stuckRunMinutes = 12;
 const cloudClassKeys = new Set(['3', '8', '9', '10']);
 const clearClassKeys = new Set(['4', '5', '6', '7']);
@@ -32,7 +30,19 @@ const indexDefinitions = {
 } as const;
 
 type IndexName = keyof typeof indexDefinitions;
-type AnalysisRequest = { establishment_id?: unknown; index_name?: unknown };
+type AnalysisRequest = { establishment_id?: unknown; index_name?: unknown; window_days?: unknown };
+type CatalogWindow = { catalogDays: 90 | 180; maxScenes: number; maxNewObservations: number };
+
+function resolveWindow(raw: unknown): CatalogWindow {
+  const days = typeof raw === 'number' && Number.isInteger(raw) ? raw
+    : typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw)
+    : 180;
+  if (!allowedWindows.has(days)) {
+    throw new PublicError(400, 'invalid_window', 'La ventana satelital admitida es 90 o 180 días.');
+  }
+  if (days === 90) return { catalogDays: 90, maxScenes: 12, maxNewObservations: 48 };
+  return { catalogDays: 180, maxScenes: 24, maxNewObservations: 96 };
+}
 type GeoJsonPolygon = { type: 'Polygon'; coordinates: number[][][] };
 type Parcel = { id: string; name: string; boundary_geojson: unknown };
 type SceneRow = {
@@ -167,9 +177,10 @@ async function providerObservation(sceneId: string, indexName: IndexName, parcel
 async function discoverScenes(
   admin: SupabaseClient,
   establishment: { id: string; organization_id: string; latitude: number; longitude: number },
+  window: CatalogWindow,
 ) {
   const until = new Date();
-  const since = new Date(until.getTime() - catalogDays * 86_400_000);
+  const since = new Date(until.getTime() - window.catalogDays * 86_400_000);
   const delta = 0.03;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
@@ -183,7 +194,7 @@ async function discoverScenes(
         bbox: [establishment.longitude - delta, establishment.latitude - delta, establishment.longitude + delta, establishment.latitude + delta],
         datetime: `${since.toISOString()}/${until.toISOString()}`,
         query: { 'eo:cloud_cover': { lt: 80 } },
-        limit: maxScenes,
+        limit: window.maxScenes,
         sortby: [{ field: 'datetime', direction: 'desc' }],
       }),
     });
@@ -281,6 +292,7 @@ Deno.serve(async request => {
     const indexName = (body.index_name ?? 'ndvi') as IndexName;
     if (!(indexName in indexDefinitions)) throw new PublicError(400, 'invalid_index', 'El índice solicitado no está habilitado.');
     const definition = indexDefinitions[indexName];
+    const catalogWindow = resolveWindow(body.window_days);
 
     const authClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
     const { data: userData, error: userError } = await authClient.auth.getUser();
@@ -306,15 +318,15 @@ Deno.serve(async request => {
     if (activeError) throw activeError;
     if (activeRun) throw new PublicError(409, 'series_in_progress', 'Ya hay una serie SCL en curso para este establecimiento.');
 
-    await discoverScenes(admin, establishment);
+    await discoverScenes(admin, establishment, catalogWindow);
 
     const { data: scenes, error: scenesError } = await admin.from('satellite_scenes')
       .select('id,provider,collection,external_id,captured_at,cloud_cover_pct')
       .eq('establishment_id', establishment.id)
       .eq('provider', 'Microsoft Planetary Computer')
       .eq('collection', 'sentinel-2-l2a')
-      .gte('captured_at', new Date(Date.now() - catalogDays * 86_400_000).toISOString())
-      .order('captured_at', { ascending: false }).limit(maxScenes);
+      .gte('captured_at', new Date(Date.now() - catalogWindow.catalogDays * 86_400_000).toISOString())
+      .order('captured_at', { ascending: false }).limit(catalogWindow.maxScenes);
     if (scenesError) throw scenesError;
     if (!scenes?.length) throw new PublicError(409, 'scene_required', 'No hay escenas Sentinel‑2 recientes para armar la serie.');
 
@@ -334,7 +346,7 @@ Deno.serve(async request => {
 
     const windowStart = scenes[scenes.length - 1].captured_at;
     const windowEnd = scenes[0].captured_at;
-    const observationTarget = Math.min(scenes.length * parcels.length, maxNewObservations);
+    const observationTarget = Math.min(scenes.length * parcels.length, catalogWindow.maxNewObservations);
     const { data: seriesRun, error: seriesError } = await admin.from('satellite_timeseries_runs').insert({
       organization_id: establishment.organization_id, establishment_id: establishment.id,
       index_name: indexName, algorithm_version: definition.algorithmVersion, requested_by: userData.user.id,
@@ -352,7 +364,7 @@ Deno.serve(async request => {
     const failures: Array<{ parcel_id: string; scene_id: string; code: string }> = [];
 
     for (const scene of scenes as SceneRow[]) {
-      if (succeeded + failed >= maxNewObservations) break;
+      if (succeeded + failed >= catalogWindow.maxNewObservations) break;
       if (scene.provider !== 'Microsoft Planetary Computer' || scene.collection !== 'sentinel-2-l2a' || !sceneIdPattern.test(scene.external_id)) {
         continue;
       }
@@ -360,7 +372,7 @@ Deno.serve(async request => {
       skipped += parcels.length - pending.length;
       if (!pending.length) continue;
 
-      const remaining = maxNewObservations - (succeeded + failed);
+      const remaining = catalogWindow.maxNewObservations - (succeeded + failed);
       const batch = pending.slice(0, remaining);
       const { data: sceneRun, error: sceneRunError } = await admin.from('satellite_analysis_runs').insert({
         organization_id: establishment.organization_id, establishment_id: establishment.id,
@@ -437,12 +449,14 @@ Deno.serve(async request => {
       run_id: seriesRun.id, status, index_name: indexName, algorithm_version: definition.algorithmVersion,
       scene_count: scenes.length, succeeded_count: succeeded, failed_count: failed, skipped_existing_count: skipped,
       rain_days: rainDays, baseline_parcels: typeof baselineCount === 'number' ? baselineCount : null,
-      window: { start: windowStart, end: windowEnd }, failures,
+      window: { start: windowStart, end: windowEnd, days: catalogWindow.catalogDays }, failures,
       limitations: [
+        `Catálogo Planetary Computer: hasta ${catalogWindow.maxScenes} escenas en ${catalogWindow.catalogDays} días.`,
         'La serie usa SCL de Sentinel‑2 L2A para aceptar o rechazar cada observación por lote.',
         'Una observación es comparable sólo si el polígono tiene menos de 5% de píxeles de nube, sombra o cirros.',
         'La media del índice no reescribe píxeles nublados: si el lote no está despejado, la observación queda limitada.',
         'La línea base es la mediana empírica del mismo lote, no un calendario fenológico certificado.',
+        'La comparación entre campañas agrupa medias usable por campaña julio–junio; no es rendimiento ni fenología.',
         'La lluvia diaria proviene del archivo Open‑Meteo y no sustituye una estación calibrada.',
       ],
     }, status === 'failed' ? 502 : 200);

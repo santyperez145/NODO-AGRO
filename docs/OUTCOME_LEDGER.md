@@ -16,19 +16,26 @@ Auravant/SIMA venden monitoreo. Kilimo conecta agua con intervención. NODO acum
 - Revisión: otra identidad `owner/admin` distinta de quien abrió → `internally_verified` o `rejected`.
 - UI **Resultados** con circuito visual de cinco nodos.
 
+## Alcance v2
+
+- `set_recommendation_status(..., 'accepted')` abre (o reutiliza) un ciclo `signal_kind='recommendation'` en el servidor.
+- Devuelve el `uuid` del ciclo. No inventa montos ni labor.
+- El Centro de mando navega a Resultados tras aceptar.
+
 ## Qué no hace
 
 - No inventa ahorro, rendimiento ni causalidad.
 - `internally_verified` no es auditoría contable ni ROI comercial publicable.
 - No ejecuta bombas, pulverizaciones ni órdenes físicas.
 - No entra a la bóveda offline.
+- No spawnea labor automática (puente a Pilot/órdenes: pendiente explícito).
 
 ## Operación
 
-1. Abrí un ciclo desde una evidencia persistida.
+1. Aceptá una recomendación o abrí un ciclo desde una evidencia persistida.
 2. Enlazá labor si aplica.
 3. Enlazá un asiento real del libro.
 4. Declará el resultado y el método.
 5. Otra identidad revisa.
 
-RPCs: `open_outcome_cycle`, `link_outcome_labor`, `link_outcome_cost`, `declare_outcome_result`, `review_outcome_cycle`.
+RPCs: `set_recommendation_status` (v2), `open_outcome_cycle`, `link_outcome_labor`, `link_outcome_cost`, `declare_outcome_result`, `review_outcome_cycle`.

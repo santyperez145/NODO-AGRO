@@ -78,14 +78,14 @@ Deno.serve(async (request) => {
     try {
       const delta = 0.03;
       const until = new Date();
-      const since = new Date(until.getTime() - 90 * 86_400_000);
+      const since = new Date(until.getTime() - 180 * 86_400_000);
       const stacResponse = await fetch('https://planetarycomputer.microsoft.com/api/stac/v1/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collections: ['sentinel-2-l2a'],
           bbox: [establishment.longitude - delta, establishment.latitude - delta, establishment.longitude + delta, establishment.latitude + delta],
           datetime: `${since.toISOString()}/${until.toISOString()}`,
-          query: { 'eo:cloud_cover': { lt: 80 } }, limit: 12,
+          query: { 'eo:cloud_cover': { lt: 80 } }, limit: 24,
           sortby: [{ field: 'datetime', direction: 'desc' }],
         }),
       });

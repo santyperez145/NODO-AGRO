@@ -3,13 +3,39 @@ import { CalendarRange, Database, Download, Layers3, LoaderCircle, Mountain, Sca
 import { SatelliteFarmMap, type SatelliteRasterLayer } from './SatelliteMap';
 import { parseGeoJsonPolygon } from './lib/geojson';
 import { planetaryRasterUrl, planetaryReliefUrl, satelliteLayers, type SatelliteLayerName } from './lib/satellite';
-import { useComputeSatelliteAnalytics, useComputeSatelliteTimeseries, useComputeTerrainRelief, type ParcelIndexBaseline, type ParcelSatelliteMetric, type SatelliteIndexName, type Workspace } from './lib/workspace';
+import { useComputeSatelliteAnalytics, useComputeSatelliteTimeseries, useComputeTerrainRelief, type EarthTimeWindowDays, type ParcelIndexBaseline, type ParcelSatelliteMetric, type SatelliteIndexName, type Workspace } from './lib/workspace';
 import type { ScoutSeed } from './ScoutPanel';
 
 const roleCanAnalyze=new Set(['owner','admin','agronomist','operator']);
 const sclAlgorithm=(index:SatelliteIndexName)=>index==='ndvi'?'sentinel2-l2a-ndvi-scl-v1':'sentinel2-l2a-ndmi-scl-v1';
 const parcelColors=['#2f6f3e','#b45309','#1d4ed8','#9f1239','#0f766e','#7c3aed'];
 const terrainAlgorithm='cop-dem-glo-30-relief-v1';
+
+/** Campaña agrícola hemisferio sur: julio–junio. No implica fenología ni rendimiento. */
+function campaignLabel(timestamp:number){
+  const date=new Date(timestamp);
+  const year=date.getUTCFullYear();
+  const startYear=date.getUTCMonth()>=6?year:year-1;
+  return `${startYear}/${String(startYear+1).slice(2)}`;
+}
+
+function campaignStats(points:Array<{date:number;mean:number;usable:boolean;parcelId:string}>,parcelId:string|null){
+  const usable=points.filter(point=>point.usable&&(!parcelId||point.parcelId===parcelId));
+  const buckets=new Map<string,{sum:number;count:number;first:number;last:number}>();
+  for(const point of usable){
+    const key=campaignLabel(point.date);
+    const current=buckets.get(key)??{sum:0,count:0,first:point.date,last:point.date};
+    current.sum+=point.mean;current.count+=1;
+    current.first=Math.min(current.first,point.date);
+    current.last=Math.max(current.last,point.date);
+    buckets.set(key,current);
+  }
+  return [...buckets.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([label,stats])=>({
+    label,mean:stats.sum/stats.count,count:stats.count,
+    from:new Date(stats.first).toLocaleDateString('es-AR'),
+    to:new Date(stats.last).toLocaleDateString('es-AR'),
+  }));
+}
 
 function qualityLabel(metric:ParcelSatelliteMetric){
   if(metric.quality_status==='usable')return metric.scl_cloud_percent===null?'Apta para comparar':`Apta · SCL nubes ${metric.scl_cloud_percent.toFixed(1)}%`;
@@ -36,7 +62,7 @@ function EarthTimeChart({points,rain,baseline,selectedParcelId}:{points:Array<{p
   const innerW=width-pad.l-pad.r;const innerH=height-pad.t-pad.b;
   const xs=points.map(point=>point.date);
   const ys=points.map(point=>point.mean);
-  const minX=xs.length?Math.min(...xs):Date.now()-90*86_400_000;
+  const minX=xs.length?Math.min(...xs):Date.now()-180*86_400_000;
   const maxX=xs.length?Math.max(...xs):Date.now();
   const minY=Math.min(-0.05,...ys,baseline?.percentile_25??1);
   const maxY=Math.max(0.2,...ys,baseline?.percentile_75??0);
@@ -78,6 +104,7 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
   const [selectedSceneId,setSelectedSceneId]=useState<string|null>(data.satellite?.id??null);
   const [hideCloudy,setHideCloudy]=useState(true);
   const [focusedParcelId,setFocusedParcelId]=useState<string|null>(null);
+  const [windowDays,setWindowDays]=useState<EarthTimeWindowDays>(180);
   const analysis=useComputeSatelliteAnalytics();
   const series=useComputeSatelliteTimeseries();
   const terrain=useComputeTerrainRelief();
@@ -143,20 +170,23 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
   },[data.weatherDaily,seriesPoints]);
   const baselines=analysisIndex&&algorithm?data.parcelIndexBaselines.filter(item=>item.index_name===analysisIndex&&item.algorithm_version===algorithm):[];
   const focusedBaseline=baselines.find(item=>item.parcel_id===(focusedParcelId??priorityParcel?.id??baselines[0]?.parcel_id))??null;
+  const campaigns=useMemo(()=>campaignStats(seriesPoints,focusedParcelId),[focusedParcelId,seriesPoints]);
+  const catalogHint=windowDays===180?'Hasta 24 escenas de 180 días · Planetary Computer':'Hasta 12 escenas de 90 días · Planetary Computer';
   const busy=analysis.isPending||series.isPending||terrain.isPending;
 
   return <section className="earthModule">
-    <div className="moduleToolbar earthToolbar"><div><small>NODO EARTH · INTELIGENCIA SATELITAL</small><h2>{establishment.name}</h2><p>Escenas Sentinel‑2 reales, serie SCL por lote, relieve DEM licenciado y comparación trazable. Sin diagnosticar ni inventar cotas.</p></div>
+    <div className="moduleToolbar earthToolbar"><div><small>NODO EARTH · INTELIGENCIA SATELITAL</small><h2>{establishment.name}</h2><p>Escenas Sentinel‑2 reales, serie SCL hasta 180 días, comparación de campañas julio–junio, relieve DEM licenciado. Sin diagnosticar ni inventar cotas.</p></div>
       <div className="earthActions">
         {analysisIndex&&canAnalyze&&<>
+          <label className="earthWindow">Ventana<select aria-label="Ventana de catálogo satelital" value={windowDays} onChange={event=>setWindowDays(Number(event.target.value) as EarthTimeWindowDays)} disabled={busy}><option value={90}>90 días</option><option value={180}>180 días</option></select></label>
           <button className="earthAnalyze ghost" disabled={busy||!selectedScene||boundedParcels.length===0} onClick={()=>analysis.mutate({establishmentId:establishment.id,indexName:analysisIndex})}>{analysis.isPending?<LoaderCircle className="spin"/>:<ScanSearch/>}{preferredMetrics.length?'Recalcular escena':'Analizar escena'}</button>
-          <button className="earthAnalyze" disabled={busy||boundedParcels.length===0} onClick={()=>series.mutate({establishmentId:establishment.id,indexName:analysisIndex})}>{series.isPending?<LoaderCircle className="spin"/>:<CalendarRange/>}{seriesPoints.length?'Actualizar serie SCL':'Construir serie SCL'}</button>
+          <button className="earthAnalyze" disabled={busy||boundedParcels.length===0} onClick={()=>series.mutate({establishmentId:establishment.id,indexName:analysisIndex,windowDays})}>{series.isPending?<LoaderCircle className="spin"/>:<CalendarRange/>}{seriesPoints.length?'Actualizar serie SCL':'Construir serie SCL'}</button>
         </>}
         {canAnalyze&&<button className="earthAnalyze" disabled={busy||boundedParcels.length===0} onClick={()=>{setLayer('relief');terrain.mutate(establishment.id)}}>{terrain.isPending?<LoaderCircle className="spin"/>:<Mountain/>}{terrainMetrics.length?'Actualizar relieve':'Construir relieve DEM'}</button>}
       </div>
     </div>
 
-    {!data.satellite&&layer!=='relief'&&<div className="earthWarning"><ShieldAlert/><div><b>Falta una escena fechada</b><span>Usá “Sincronizar fuentes” o “Construir serie SCL” para buscar Sentinel‑2 de los últimos 90 días. El relieve DEM no depende de esa escena.</span></div></div>}
+    {!data.satellite&&layer!=='relief'&&<div className="earthWarning"><ShieldAlert/><div><b>Falta una escena fechada</b><span>Usá “Sincronizar fuentes” o “Construir serie SCL” para buscar Sentinel‑2 de los últimos {windowDays} días. El relieve DEM no depende de esa escena.</span></div></div>}
     {analysis.error&&<div className="earthError"><ShieldAlert/><div><b>El análisis de escena no se completó</b><span>{analysis.error instanceof Error?analysis.error.message:'Error no identificado'}. Las métricas anteriores permanecen intactas.</span></div></div>}
     {series.error&&<div className="earthError"><ShieldAlert/><div><b>La serie SCL no se completó</b><span>{series.error instanceof Error?series.error.message:'Error no identificado'}. Las observaciones anteriores permanecen intactas.</span></div></div>}
     {terrain.error&&<div className="earthError"><ShieldAlert/><div><b>El relieve DEM no se completó</b><span>{terrain.error instanceof Error?terrain.error.message:'Error no identificado'}. Las métricas anteriores permanecen intactas.</span></div></div>}
@@ -179,7 +209,7 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
 
     <div className="earthEvidence">
       <article><small>ESCENA</small><b>{layer==='relief'?'DEM GLO-30':selectedScene?new Date(selectedScene.captured_at).toLocaleDateString('es-AR'):'—'}</b><span>{layer==='relief'?`${latestTerrainRun?.collection??'cop-dem-glo-30'} · DSM`:selectedScene?`${selectedScene.collection} · ${selectedScene.cloud_cover_pct?.toFixed(1)??'—'}% nubes de escena`:'Sin fuente'}</span></article>
-      <article><small>{layer==='relief'?'RESOLUCIÓN':'CATÁLOGO'}</small><b>{layer==='relief'?`${latestTerrainRun?.resolution_meters??30} m`:data.satelliteScenes.length}</b><span>{layer==='relief'?`LE90ABS media publicada ${latestTerrainRun?.published_le90abs_mean_m??1.92} m`:'Hasta 12 escenas de 90 días · Planetary Computer'}</span></article>
+      <article><small>{layer==='relief'?'RESOLUCIÓN':'CATÁLOGO'}</small><b>{layer==='relief'?`${latestTerrainRun?.resolution_meters??30} m`:data.satelliteScenes.length}</b><span>{layer==='relief'?`LE90ABS media publicada ${latestTerrainRun?.published_le90abs_mean_m??1.92} m`:catalogHint}</span></article>
       <article><small>LOTE ANALIZADO</small><b>{layer==='relief'?`${terrainMetrics.length}/${boundedParcels.length}`:`${preferredMetrics.length}/${boundedParcels.length}`}</b><span>{layer==='relief'?(latestTerrainRun?`${runLabel(latestTerrainRun.status)} · ${new Date(latestTerrainRun.started_at).toLocaleString('es-AR')}`:'Sin ejecución de relieve'):(latestRun?`${runLabel(latestRun.status)} · ${new Date(latestRun.started_at).toLocaleString('es-AR')}`:'Sin ejecución para esta capa')}</span></article>
       <article><small>CALIDAD</small><b>{layer==='relief'?'DSM · EGM2008':algorithm?'SCL por lote':'Escena'}</b><span>{layer==='relief'?'No es cota de obra ni DTM de suelo desnudo':'Nubosidad de polígono, no sólo el metadato global'}</span></article>
     </div>
@@ -221,10 +251,14 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
         </div>
       </div>
       {seriesPoints.length?<EarthTimeChart points={focusedParcelId?seriesPoints.filter(point=>point.parcelId===focusedParcelId):seriesPoints} rain={rain} baseline={focusedBaseline} selectedParcelId={focusedParcelId}/>:<div className="earthEmpty compact"><CalendarRange/><b>Todavía no hay una serie SCL</b><span>Construí la serie para obtener fechas, filtro de nubes por lote, lluvia diaria y una mediana empírica del mismo polígono.</span></div>}
+      {campaigns.length>0&&<div className="earthCampaignGrid" aria-label="Comparación de campañas">
+        {campaigns.map(campaign=><article key={campaign.label}><small>CAMPAÑA {campaign.label}</small><b>{campaign.mean.toFixed(3)}</b><span>{campaign.count} obs. usable · {campaign.from} – {campaign.to}</span></article>)}
+      </div>}
       <div className="earthTimeMeta">
         <span>{latestSeries?`Última serie ${runLabel(latestSeries.status)} · ${new Date(latestSeries.started_at).toLocaleString('es-AR')}`:'Sin ejecución de serie'}</span>
         <span>{rain.length?`${rain.reduce((sum,item)=>sum+item.mm,0).toFixed(1)} mm de lluvia en la ventana`:'Sin archivo de lluvia persistido'}</span>
         <span>Las barras azules son precipitación diaria. La banda verde es el rango intercuartil del lote enfocado.</span>
+        <span>Campañas julio–junio: media de observaciones usable. No es fenología, rendimiento ni causa agronómica.</span>
       </div>
     </article>}
 
@@ -236,6 +270,6 @@ export function SatelliteIntelligencePanel({data,onPlanScout}:{data:Workspace;on
     {baselines.length>0&&<div className="earthBaselineGrid">{baselines.map(item=>{const parcel=data.parcels.find(row=>row.id===item.parcel_id);return <article key={item.id}><small>{parcel?.name??'Lote'}</small><b>{item.median_value.toFixed(3)}</b><span>{item.observation_count} observaciones usable · p25 {item.percentile_25.toFixed(3)} · p75 {item.percentile_75.toFixed(3)}</span><em>{item.latest_delta===null?'Mediana empírica: se necesitan 3 fechas despejadas para un delta.':`Última vs mediana: ${item.latest_delta>=0?'+':''}${item.latest_delta.toFixed(3)}`}</em></article>})}</div>}
 
     <div className="earthBoundary"><ShieldAlert/><p><b>Límite agronómico:</b> Earth Time acepta una fecha sólo si SCL marca menos de 5% de nube, sombra o cirros dentro del polígono. Terrain usa Copernicus DEM GLO-30 (DSM ~30 m, LE90ABS media publicada ~1,92 m) y no es topografía de obra ni modelo hidrológico. No identifica enfermedad, estrés, necesidad de riego ni rendimiento. Toda intervención requiere validación profesional y en campo.</p></div>
-    <div className="earthRoadmap"><Layers3/><div><small>SIGUIENTE CAPACIDAD VERIFICABLE</small><b>Earth Time extendido</b><span>Más de 90 días y comparación entre campañas sólo con protocolo agronómico. Outcome Ledger ya cierra señal → labor → costo → resultado.</span></div></div>
+    <div className="earthRoadmap"><Layers3/><div><small>SIGUIENTE CAPACIDAD VERIFICABLE</small><b>Terrain 3D con motor licenciado</b><span>La malla interactiva espera un motor y licencia compatibles. Outcome v2 ya abre un ciclo al aceptar una recomendación.</span></div></div>
   </section>;
 }

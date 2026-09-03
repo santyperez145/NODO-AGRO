@@ -53,7 +53,29 @@ export function PilotControl({data}:{data:Workspace}){
       <PilotMetrics baseline={baseline} comparison={comparison} currency={establishment.base_currency}/>
       <section className="pilotGrid"><ValueLedger program={program} claims={claims} actorUserId={data.organization!.userId} manager={manager} currency={establishment.base_currency} busy={recordValue.isPending||reviewValue.isPending} onRecord={input=>action(()=>recordValue.mutateAsync(input),'Valor declarado; requiere revisión independiente.')} onReview={(input,accepted)=>action(()=>reviewValue.mutateAsync({...input,accepted}),accepted?'Claim validado internamente.':'Claim rechazado con trazabilidad.')}/><PilotGovernance program={program} snapshots={snapshots} manager={manager} busy={transition.isPending} onTransition={input=>action(()=>transition.mutateAsync(input),input.status==='completed'?'Piloto completado con captura final.':'Piloto cancelado con motivo auditado.')}/></section>
     </>}
+    <CommercialPilotGates outcomeCycles={data.outcomeCycles.length}/>
   </div>;
+}
+
+function CommercialPilotGates({outcomeCycles}:{outcomeCycles:number}){
+  const productReady=[
+    {label:'Circuito Resultados disponible',ok:true},
+    {label:'Al menos un ciclo Outcome abierto o cerrado',ok:outcomeCycles>0},
+    {label:'Earth Time / Water / Scout / Terrain en producto',ok:true},
+    {label:'Pilot Control con línea base medible',ok:true},
+  ];
+  const humanGates=[
+    {label:'Dominio definitivo + Auth redirect',ok:false},
+    {label:'SMTP propio con SPF/DKIM/DMARC',ok:false},
+    {label:'Contrato de piloto y anexo de datos firmados',ok:false},
+    {label:'Invitación real ensayada con el cliente',ok:false},
+  ];
+  return <section className="pilotCommercial"><div className="pilotSectionTitle"><div><small>PILOTO PAGABLE</small><h3>Checklist honesto</h3><p>El producto cierra señal → labor → costo → resultado. Dominio, SMTP y contrato siguen siendo gates humanos (docs/COMMERCIAL_PILOT.md). Tener VITE_SUPABASE_URL no prueba SMTP de producción.</p></div><Rocket/></div>
+    <div className="pilotGateGrid">
+      <article><small>CÓDIGO / PRODUCTO</small><ul>{productReady.map(item=><li key={item.label} className={item.ok?'ok':'pending'}>{item.ok?<Check/>:<Clock3/>}{item.label}</li>)}</ul></article>
+      <article><small>GATE P1 HUMANO</small><ul>{humanGates.map(item=><li key={item.label} className={item.ok?'ok':'pending'}>{item.ok?<Check/>:<AlertTriangle/>}{item.label}</li>)}</ul></article>
+    </div>
+  </section>;
 }
 
 function LaunchPilot({manager,busy,onLaunch}:{manager:boolean;busy:boolean;onLaunch:(input:{name:string;hypothesis:string;successDefinition:string;targetEnd:string;baselineDays:number})=>void}){

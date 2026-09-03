@@ -363,17 +363,19 @@ const satelliteTimeseriesResponseSchema=z.object({
   succeeded_count:z.number().int().nonnegative(),failed_count:z.number().int().nonnegative(),
   skipped_existing_count:z.number().int().nonnegative(),rain_days:z.number().int().nonnegative(),
   baseline_parcels:z.number().int().nonnegative().nullable().optional(),
-  window:z.object({start:z.string(),end:z.string()}),
+  window:z.object({start:z.string(),end:z.string(),days:z.union([z.literal(90),z.literal(180)]).optional()}),
   failures:z.array(z.object({parcel_id:z.string().uuid(),scene_id:z.string().uuid(),code:z.string()})),
   limitations:z.array(z.string()),
 });
 
+export type EarthTimeWindowDays=90|180;
+
 export function useComputeSatelliteTimeseries(){
   const queryClient=useQueryClient();
   return useMutation({
-    mutationFn:async(input:{establishmentId:string;indexName:SatelliteIndexName})=>{
+    mutationFn:async(input:{establishmentId:string;indexName:SatelliteIndexName;windowDays?:EarthTimeWindowDays})=>{
       const client=await requireClient();
-      const {data,error}=await client.functions.invoke('satellite-timeseries',{body:{establishment_id:input.establishmentId,index_name:input.indexName}});
+      const {data,error}=await client.functions.invoke('satellite-timeseries',{body:{establishment_id:input.establishmentId,index_name:input.indexName,window_days:input.windowDays??180}});
       if(error)throw new Error(await functionErrorMessage(error));
       if(data?.error)throw new Error(String(data.error));
       return satelliteTimeseriesResponseSchema.parse(data);
@@ -550,8 +552,9 @@ export function useRecommendationAction() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'accepted'|'dismissed'|'completed' }) => {
       const client = await requireClient();
-      const { error } = await client.rpc('set_recommendation_status', { target_id: id, next_status: status, note: null });
+      const { data, error } = await client.rpc('set_recommendation_status', { target_id: id, next_status: status, note: null });
       if (error) throw error;
+      return { cycleId: typeof data === 'string' ? data : null };
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspace'] }),
   });

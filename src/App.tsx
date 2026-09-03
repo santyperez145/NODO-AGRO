@@ -73,6 +73,7 @@ function Dashboard({data,onOrganizationChange,offlineMode=false,offlineMeta,fiel
   const liveWeather = useAgroWeather(establishment.latitude, establishment.longitude,!offlineMode);
   const sync = useSyncIntelligence();
   const recommendationAction = useRecommendationAction();
+  const [decisionNotice,setDecisionNotice]=useState<string|null>(null);
   const online = data.devices.filter(device=>deviceConnectionState(device)==='online').length;
   const staleDevices = data.devices.filter(device=>deviceConnectionState(device)!=='online').length;
   const evidenceScore = Math.round((Number(Boolean(data.weather))+Number(Boolean(data.satellite))+Number(data.devices.length>0)+Number(data.parcels.length>0))*25);
@@ -81,6 +82,23 @@ function Dashboard({data,onOrganizationChange,offlineMode=false,offlineMeta,fiel
   const visibleSections=offlineMode?sections.filter(([,name])=>name==='Recorridas'):managesTeam?sections:sections.filter(([,name])=>name!=='Equipo');
   useEffect(()=>{if(active==='Equipo'&&!managesTeam)setActive('Centro de mando')},[active,managesTeam]);
   useEffect(()=>{if(offlineMode&&active!=='Recorridas')setActive('Recorridas')},[active,offlineMode]);
+
+  function handleDecision(id:string,status:'accepted'|'dismissed'){
+    setDecisionNotice(null);
+    recommendationAction.mutate({id,status},{
+      onSuccess:result=>{
+        if(status==='accepted'&&result.cycleId){
+          setDecisionNotice('Recomendación aceptada: se abrió un ciclo en Resultados (señal → labor → costo → resultado).');
+          setActive('Resultados');
+        }else if(status==='accepted'){
+          setDecisionNotice('Recomendación aceptada. Revisá o completá el ciclo en Resultados.');
+        }else{
+          setDecisionNotice('Recomendación descartada.');
+        }
+      },
+      onError:error=>setDecisionNotice(error instanceof Error?error.message:'No se pudo registrar la decisión'),
+    });
+  }
 
   return <div className="app"><aside>
     <div className="logo"><span><Activity/></span><div><b>NODO</b><small>AGRO INTELLIGENCE</small></div></div>
@@ -95,7 +113,8 @@ function Dashboard({data,onOrganizationChange,offlineMode=false,offlineMeta,fiel
     {!offlineMode&&fieldPackageMeta&&<div className="fieldPackageReady"><ShieldCheck/>Paquete de campo preparado hasta {new Date(fieldPackageMeta.expiresAt).toLocaleString('es-AR')} · {fieldPackageMeta.visitCount} recorridas abiertas</div>}
     {!offlineMode&&sync.error&&<div className="sourceError"><ShieldAlert/>La sincronización falló: {sync.error instanceof Error?sync.error.message:'error no identificado'}. Los últimos datos válidos permanecen visibles.</div>}
     {!offlineMode&&sync.isSuccess&&<div className="sourceSuccess"><Database/>Fuentes actualizadas y persistidas con trazabilidad.</div>}
-    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={(id,status)=>recommendationAction.mutate({id,status})} onOpenResults={()=>setActive('Resultados')}/>:active==='Mapa vivo'?<MapPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Agua'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando saldo hídrico…</div>}><WaterPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/></Suspense>:active==='Recorridas'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando recorridas…</div>}><ScoutPanel data={data} seed={scoutSeed} onSeedConsumed={()=>setScoutSeed(null)} offlineMode={offlineMode}/></Suspense>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:active==='Resultados'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando Outcome Ledger…</div>}><OutcomePanel data={data}/></Suspense>:active==='Piloto'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando evidencia del piloto…</div>}><PilotControl data={data}/></Suspense>:active==='Equipo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando gestión de acceso…</div>}><TeamPanel organization={data.organization!}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
+    {decisionNotice&&<div className="sourceSuccess"><GitBranch/>{decisionNotice}</div>}
+    {active==='Centro de mando'?<Overview data={data} weather={sourceWeather} evidenceScore={evidenceScore} staleDevices={staleDevices} onDecision={handleDecision} onOpenResults={()=>setActive('Resultados')}/>:active==='Mapa vivo'?<MapPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/>:active==='Cultivos'?<CultivosPanel data={data}/>:active==='Agua'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando saldo hídrico…</div>}><WaterPanel data={data} onPlanScout={seed=>{setScoutSeed(seed);setActive('Recorridas')}}/></Suspense>:active==='Recorridas'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando recorridas…</div>}><ScoutPanel data={data} seed={scoutSeed} onSeedConsumed={()=>setScoutSeed(null)} offlineMode={offlineMode}/></Suspense>:active==='Sensores'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando red de sensores…</div>}><SensorsPanel data={data}/></Suspense>:active==='Rodeo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando trazabilidad del rodeo…</div>}><LivestockPanel data={data}/></Suspense>:active==='Maquinaria'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando activos y mantenimiento…</div>}><MachineryPanel data={data}/></Suspense>:active==='Resultados'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando Outcome Ledger…</div>}><OutcomePanel data={data}/></Suspense>:active==='Piloto'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando evidencia del piloto…</div>}><PilotControl data={data}/></Suspense>:active==='Equipo'?<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando gestión de acceso…</div>}><TeamPanel organization={data.organization!}/></Suspense>:<Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Cargando libro operativo…</div>}><EconomyPanel data={data}/></Suspense>}
   </main></div>;
 }
 
