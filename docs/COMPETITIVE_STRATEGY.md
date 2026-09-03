@@ -82,14 +82,14 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 
 - Ciclo trazable señal → labor → asiento del libro → resultado → revisión de segunda identidad.
 - Montos sólo desde `financial_entries` enlazados. Snapshot de señal congelado server-side.
-- Outcome v2: aceptar una recomendación abre o reutiliza el ciclo en servidor.
+- Outcome v2: aceptar una recomendación abre o reutiliza el ciclo; con lote crea Scout y enlaza labor.
 - `internally_verified` es control interno, no ROI externo ni causalidad certificada.
 - Nav **Resultados** con circuito visual de cinco nodos.
 
 ## Próximos productos priorizados
 
-1. **Puente Outcome → labor automática** (orden/Scout) y métricas Pilot Control enlazadas.
-2. **Onboarding SaaS pagable:** dominio, SMTP/SPF/DKIM y contrato — ver `docs/COMMERCIAL_PILOT.md`.
+1. **Onboarding SaaS pagable en producción:** dominio DNS, SMTP/SPF/DKIM, Auth redirects y contrato — checklist en Equipo + `docs/COMMERCIAL_PILOT.md`.
+2. **Puentes adicionales de labor** (órdenes de flota / riego declarado) cuando el protocolo lo permita.
 3. **Terrain 3D interactivo:** malla/render con motor y licencia compatibles, sólo después de que el relieve 2D demuestre uso.
 
 ## Claims permitidos
@@ -102,7 +102,7 @@ Limitación actual: `unmasked-v1` permanece como inspección de una escena. `scl
 - “Rechaza evidencia de campo con políglota o hash conocido sin enviar la foto a un catálogo.”
 - “Muestra relieve Copernicus DEM GLO-30 con resolución 30 m, LE90ABS publicada y licencia visibles.”
 - “Enlaza señal, labor, costo del libro y resultado con revisión de dos identidades.”
-- “Al aceptar una recomendación abre un ciclo de resultados verificable.”
+- “Al aceptar una recomendación abre un ciclo de resultados y, con lote, una recorrida Scout enlazada.”
 - “Integra la decisión con la operación y el costo.”
 
 No se afirmará “detecta enfermedades”, “optimiza riego”, “aumenta rendimiento”, “centimétrico”, “tiempo real”, “homologado” o “ahorra X%” sin protocolo, datos de campo, intervalo de confianza y alcance contractual que lo respalden.

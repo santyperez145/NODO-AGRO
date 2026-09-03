@@ -1,5 +1,5 @@
 import { type FormEvent, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Clock3, Copy, LoaderCircle, Mail, ShieldCheck, Trash2, UserCog, UserPlus, Users } from 'lucide-react';
+import { AlertTriangle, Check, Clock3, Copy, Globe2, LoaderCircle, Mail, ShieldCheck, Trash2, UserCog, UserPlus, Users } from 'lucide-react';
 import { useChangeMemberRole, useInviteOrganizationMember, useOrganizationTeam, useRemoveOrganizationMember, useRevokeOrganizationInvitation, type EditableTeamRole, type TeamInvitation, type TeamMember, type TeamRole } from './lib/team';
 import type { OrganizationMembership } from './lib/workspace';
 import './team.css';
@@ -11,6 +11,31 @@ const deliveryLabels:Record<TeamInvitation['delivery_status'],string>={queued:'E
 
 function errorText(error:unknown){return error instanceof Error?error.message:'Error inesperado'}
 function dateTime(value:string|null){return value?new Intl.DateTimeFormat('es-AR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value)):'Nunca'}
+
+function saasSignals(invitations:TeamInvitation[]){
+  const origin=typeof window!=='undefined'?window.location.origin:'';
+  let hostname='';
+  try{hostname=new URL(origin).hostname}catch{/* ignore */}
+  const configuredCanonical=(import.meta.env.VITE_PUBLIC_APP_URL as string|undefined)?.replace(/\/$/,'')||null;
+  const https=origin.startsWith('https://');
+  const local=/^(localhost|127\.0\.0\.1)$/i.test(hostname);
+  const preview=/\.vercel\.app$/i.test(hostname)||/\.netlify\.app$/i.test(hostname);
+  const customDomain=!local&&!preview&&hostname.includes('.');
+  const originMatchesCanonical=!configuredCanonical||configuredCanonical===origin;
+  const sent=invitations.some(item=>item.delivery_status==='sent');
+  const failed=invitations.some(item=>item.delivery_status==='failed');
+  return {
+    origin,
+    checks:[
+      {label:'Origen HTTPS (TLS)',ok:https,detail:https?'Sesión sobre TLS':'Abrí la app por HTTPS antes de invitar clientes'},
+      {label:'Dominio canónico (no localhost/preview)',ok:customDomain,detail:customDomain?hostname:'Todavía es local o preview; configurá DNS del dominio definitivo'},
+      {label:'VITE_PUBLIC_APP_URL coincide con el origen',ok:originMatchesCanonical,detail:configuredCanonical?`Configurado: ${configuredCanonical}`:'Definí VITE_PUBLIC_APP_URL con la URL canónica'},
+      {label:'Auth redirect a registrar',ok:Boolean(origin),detail:`${origin}/ y ${origin}/?invitation=* en Supabase Auth → URL Configuration`},
+      {label:'SMTP: al menos un correo solicitado',ok:sent,detail:sent?'Hubo delivery_status=sent':'Sin envíos exitosos aún — falta SMTP propio o ensayo'},
+      {label:'SMTP: sin fallos abiertos',ok:!failed,detail:failed?'Hay invitaciones failed: revisá proveedor/SPF/DKIM':'Sin fallos registrados en el historial'},
+    ],
+  };
+}
 
 export function TeamPanel({organization}:{organization:OrganizationMembership}){
   const manager=organization.role==='owner'||organization.role==='admin';
@@ -26,6 +51,7 @@ export function TeamPanel({organization}:{organization:OrganizationMembership}){
   const [confirmRevoke,setConfirmRevoke]=useState<string|null>(null);
   const [notice,setNotice]=useState<{tone:'ok'|'error';text:string}|null>(null);
   const activeInvitations=useMemo(()=>team.data?.invitations.filter(item=>item.status==='pending')??[],[team.data]);
+  const saas=useMemo(()=>saasSignals(team.data?.invitations??[]),[team.data?.invitations]);
 
   async function submit(event:FormEvent){
     event.preventDefault();setNotice(null);
@@ -60,6 +86,10 @@ export function TeamPanel({organization}:{organization:OrganizationMembership}){
     <section className="teamIntro"><div><small>IDENTIDAD Y ACCESO · MULTIEMPRESA</small><h2>Equipo de {organization.name}</h2><p>Asigná el menor privilegio necesario. Las bajas cortan el acceso a los datos de esta empresa sin borrar la cuenta personal.</p></div><span><ShieldCheck/> Control auditado</span></section>
     <section className="teamMetrics"><Metric icon={Users} value={data.members.length} label="miembros activos"/><Metric icon={Clock3} value={activeInvitations.length} label="invitaciones pendientes"/><Metric icon={UserCog} value={data.members.filter(item=>['owner','admin'].includes(item.role)).length} label="responsables de acceso"/></section>
     {notice&&<div className={`teamNotice ${notice.tone}`}>{notice.tone==='ok'?<Check/>:<AlertTriangle/>}<span>{notice.text}</span></div>}
+    <section className="saasReady"><div className="teamTitle"><span><Globe2/></span><div><h3>Onboarding SaaS · dominio y correo</h3><p>Señales observables desde este navegador. Contrato firmado y SPF/DKIM siguen siendo evidencia humana (docs/COMMERCIAL_PILOT.md).</p></div></div>
+      <p className="saasOrigin">Origen actual: <b>{saas.origin||'—'}</b></p>
+      <ul className="saasChecks">{saas.checks.map(item=><li key={item.label} className={item.ok?'ok':'pending'}>{item.ok?<Check/>:<AlertTriangle/>}<div><b>{item.label}</b><span>{item.detail}</span></div></li>)}</ul>
+    </section>
     <section className="teamGrid"><form className="inviteCard" onSubmit={submit}><div className="teamTitle"><span><UserPlus/></span><div><h3>Invitar integrante</h3><p>La invitación vence y sólo puede aceptarla el correo indicado.</p></div></div>
       <label>Correo corporativo<input type="email" required value={email} onChange={event=>setEmail(event.target.value)} placeholder="persona@empresa.com" autoComplete="email"/></label>
       <div className="teamFormRow"><label>Rol<select value={role} onChange={event=>setRole(event.target.value as EditableTeamRole)}>{editableRoles.filter(item=>organization.role==='owner'||item!=='admin').map(item=><option value={item} key={item}>{roleLabels[item]}</option>)}</select></label><label>Vencimiento<select value={expiresDays} onChange={event=>setExpiresDays(Number(event.target.value))}><option value={3}>3 días</option><option value={7}>7 días</option><option value={14}>14 días</option></select></label></div>

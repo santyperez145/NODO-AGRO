@@ -19,7 +19,9 @@ Auravant/SIMA venden monitoreo. Kilimo conecta agua con intervención. NODO acum
 ## Alcance v2
 
 - `set_recommendation_status(..., 'accepted')` abre (o reutiliza) un ciclo `signal_kind='recommendation'` en el servidor.
-- Devuelve el `uuid` del ciclo. No inventa montos ni labor.
+- Si la recomendación tiene `parcel_id`, crea una recorrida Scout (`create_scouting_visit_v2`) y la enlaza con `link_outcome_labor`.
+- Sin lote, el ciclo queda en `open` para enlazar labor manualmente.
+- Devuelve el `uuid` del ciclo. No inventa montos.
 - El Centro de mando navega a Resultados tras aceptar.
 
 ## Qué no hace
@@ -28,7 +30,7 @@ Auravant/SIMA venden monitoreo. Kilimo conecta agua con intervención. NODO acum
 - `internally_verified` no es auditoría contable ni ROI comercial publicable.
 - No ejecuta bombas, pulverizaciones ni órdenes físicas.
 - No entra a la bóveda offline.
-- No spawnea labor automática (puente a Pilot/órdenes: pendiente explícito).
+- No spawnea órdenes de flota ni riego automáticamente (sólo Scout cuando hay lote).
 
 ## Operación
 

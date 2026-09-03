@@ -8,13 +8,13 @@ Fuente de verdad de gates: `docs/LAUNCH_READINESS.md`.
 
 | Capacidad | Evidencia en repo |
 |---|---|
-| Circuito señal → labor → costo → resultado | Outcome Ledger + Outcome v2 (aceptar recomendación abre ciclo) |
+| Circuito señal → labor → costo → resultado | Outcome Ledger + aceptar recomendación abre ciclo y Scout (si hay lote) |
 | Serie satelital verificable | Earth Time 90/180 días, SCL por lote, campañas julio–junio |
 | Agua de referencia | Water FAO-56 + riego declarado |
 | Scout con evidencia | Recorridas, hash, field-scan |
 | Relieve 2D licenciado | Terrain Copernicus DEM GLO-30 |
 | Piloto medible | Pilot Control con línea base y claims de dos identidades |
-| Onboarding multiempresa | Invitaciones server-owned + roles |
+| Onboarding multiempresa | Invitaciones server-owned + checklist SaaS en Equipo |
 
 ## Gate P0 — piloto interno (equipo)
 
@@ -42,11 +42,13 @@ Ver `LAUNCH_READINESS.md`: marca, privacidad, pentest, seguro, tres pilotos y RO
 
 ## Onboarding SaaS / dominio (pasos reales)
 
-1. Definir URL canónica (ej. `app.tudominio.com`) y configurar Auth redirect URLs en Supabase.
-2. Configurar proveedor SMTP en Supabase Auth (no usar el SMTP compartido de desarrollo para clientes).
-3. Publicar aviso de privacidad y términos revisados legalmente.
-4. Crear la organización del cliente vía onboarding; invitar owner/admin reales.
-5. Congelar línea base en Piloto; operar Earth Time / Water / Scout; cerrar Resultados.
+1. Definir URL canónica y setear `VITE_PUBLIC_APP_URL` (sin barra final).
+2. Apuntar DNS + TLS; en Supabase Auth → URL Configuration registrar `https://app…/` y el patrón de invitación.
+3. Configurar proveedor SMTP en Supabase Auth (no usar el SMTP compartido de desarrollo para clientes); verificar SPF/DKIM/DMARC.
+4. En **Equipo**, revisar el bloque “Onboarding SaaS · dominio y correo” hasta que HTTPS, dominio y envíos queden en verde observable.
+5. Publicar aviso de privacidad y términos revisados legalmente.
+6. Crear la organización del cliente vía onboarding; invitar owner/admin reales.
+7. Congelar línea base en Piloto; operar Earth Time / Water / Scout; cerrar Resultados (costo + revisión).
 
 ## Qué no afirmar
 

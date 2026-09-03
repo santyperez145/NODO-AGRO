@@ -88,7 +88,7 @@ function Dashboard({data,onOrganizationChange,offlineMode=false,offlineMeta,fiel
     recommendationAction.mutate({id,status},{
       onSuccess:result=>{
         if(status==='accepted'&&result.cycleId){
-          setDecisionNotice('Recomendación aceptada: se abrió un ciclo en Resultados (señal → labor → costo → resultado).');
+          setDecisionNotice('Recomendación aceptada: ciclo en Resultados y, si había lote, recorrida Scout enlazada como labor.');
           setActive('Resultados');
         }else if(status==='accepted'){
           setDecisionNotice('Recomendación aceptada. Revisá o completá el ciclo en Resultados.');
@@ -137,7 +137,7 @@ function Overview({data,weather,evidenceScore,staleDevices,onDecision,onOpenResu
     <Suspense fallback={<div className="mapLoading"><LoaderCircle className="spin"/>Preparando inteligencia transversal…</div>}><IntelligenceBrief data={data}/></Suspense>
     <section className="lower"><article className="panel"><div className="title"><div><h2>Decisiones con evidencia</h2><p>Reglas agronómicas transparentes; requieren aprobación humana</p></div><em>{data.recommendations.length} abiertas</em></div>{data.recommendations.length?data.recommendations.map(item=><Decision key={item.id} item={item} onDecision={onDecision} onOpenResults={onOpenResults}/>):<EmptyRow text="No hay alertas activas para las fuentes actuales."/>}</article>
       <article className="panel"><div className="title"><div><h2>Unidades productivas</h2><p>Inventario persistido del establecimiento</p></div></div>{data.parcels.length?data.parcels.map(parcel=><div className="lot" key={parcel.id}><i/><div><h3>{parcel.name}</h3><p>{parcel.crop??parcel.use} · {parcel.area_hectares} ha</p></div><span><b style={{width:`${parcel.health_score??0}%`}}/></span><strong>{parcel.health_score??'—'}</strong></div>):<EmptyRow text="Aún no hay lotes registrados."/>}</article></section>
-    <section className="insight"><span><Bot/></span><div><small>PRINCIPIO NODO</small><h2>Decidir con evidencia, no con una cifra decorativa</h2><p>Cada recomendación conserva fuente, momento, confianza y estado. Cerrá el circuito en Resultados: señal, labor, asiento real y verificación de dos identidades.</p></div></section>
+    <section className="insight"><span><Bot/></span><div><small>PRINCIPIO NODO</small><h2>Decidir con evidencia, no con una cifra decorativa</h2><p>Cada recomendación conserva fuente, momento, confianza y estado. Al aceptar, NODO abre el ciclo en Resultados y, si hay lote, crea la recorrida Scout como labor. Completá costo y verificación de dos identidades.</p></div></section>
   </>;
 }
 

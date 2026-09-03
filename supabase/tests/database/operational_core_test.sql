@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(186);
+select plan(187);
 
 select has_table('public','livestock_groups','livestock groups table exists');
 select has_table('public','livestock_events','append-only livestock events table exists');
@@ -128,6 +128,7 @@ select ok(has_function_privilege('authenticated','public.open_outcome_cycle(uuid
 select ok(has_function_privilege('authenticated','public.review_outcome_cycle(uuid,boolean,text,uuid)','EXECUTE'),'authenticated managers can review outcome cycles');
 select ok(has_function_privilege('authenticated','public.set_recommendation_status(uuid,recommendation_status,text)','EXECUTE'),'authenticated can decide recommendations that spawn outcome cycles');
 select is(pg_get_function_result('public.set_recommendation_status(uuid,public.recommendation_status,text)'::regprocedure),'uuid','accepting a recommendation returns an outcome cycle id');
+select ok((select pg_get_functiondef('public.set_recommendation_status(uuid,public.recommendation_status,text)'::regprocedure) like '%create_scouting_visit_v2%'),'accepting a recommendation can open Scout labor');
 select ok((select pg_get_constraintdef(oid) like '%outcome_cycle%' from pg_constraint where conrelid='public.operational_audit_events'::regclass and conname='operational_audit_events_entity_type_check'),'central audit accepts outcome cycles');
 select is(has_table_privilege('authenticated','public.scouting_visits','INSERT'),false,'browser cannot bypass scouting RPC');
 select is(has_table_privilege('authenticated','public.scouting_visit_events','INSERT'),false,'browser cannot forge scouting history');
