@@ -5,7 +5,8 @@
 .outcomeHeroStat b{display:block;font:800 22px/1.1 Georgia,serif}
 .outcomeHeroStat span{font-size:10px;opacity:.85}
 .outcomeStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.outcomeStats article{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #d7e0d4;border-radius:12px;background:#f7faf6}
+.outcomeStats article{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid #d7e0d4;border-radius:12px;background:#f7faf6;transition:border-color .15s ease, transform .15s ease;}
+.outcomeStats article:hover{border-color:#b7dd68; transform:translateY(-2px); box-shadow:0 6px 18px -6px #1a261822;}
 .outcomeStats svg{width:18px;color:#2f5a3c;flex:0 0 auto;margin-top:2px}
 .outcomeStats small{display:block;font-size:9px;letter-spacing:.04em;color:#5d6b5a}
 .outcomeStats b{display:block;font-size:16px;color:#1d2b1f}
@@ -35,7 +36,7 @@
 .outcomeStatus.rejected{background:#f6e5dc;color:#874b39}
 .outcomeStatus.outcome_declared{background:#e6eef8;color:#2a4d7a}
 .outcomeCircuit{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.outcomeCircuit li{border:1px dashed #c9d4c5;border-radius:12px;padding:10px 8px;display:grid;gap:4px;background:#f4f7f2;color:#7a8778}
+.outcomeCircuit li{border:1px dashed #c9d4c5;border-radius:12px;padding:10px 8px;display:grid;gap:4px;background:#f4f7f2;color:#7a8778;transition:border-color .15s ease, background .15s ease;}
 .outcomeCircuit li.done{border-style:solid;border-color:#2f5a3c;background:linear-gradient(180deg,#eef7ea,#e2efdc);color:#1f3a2a}
 .outcomeCircuit b{font-size:11px}
 .outcomeCircuit span{font-size:10px;font-weight:700}
