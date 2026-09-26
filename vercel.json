@@ -2,10 +2,25 @@
   "version": 2,
   "build": {
     "command": "npm run build",
-    "publish": "npm run build"
+    "publish": "dist"
   },
   "framework": "vite",
-  "types": false,
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "env": {
+    "VITE_PUBLIC_APP_URL": {
+      "description": "Canonical app URL (no trailing slash)",
+      "required": true
+    },
+    "VITE_SUPABASE_URL": {
+      "description": "Supabase project URL",
+      "required": true
+    },
+    "VITE_SUPABASE_PUBLISHABLE_KEY": {
+      "description": "Supabase publishable key",
+      "required": true
+    }
+  },
   "routes": [
     { "src": "/(?<path>.*)", "dest": "/index.html" }
   ]
